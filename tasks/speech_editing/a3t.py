@@ -3,9 +3,9 @@ import os
 import numpy as np
 import torch
 import torch.nn.functional as F
-from modules.speech_editing.a3t import A3T
+from modules.speech_editing.a3t.a3t import A3T
 from tasks.tts.dataset_utils import StutterSpeechDataset
-from tasks.tts.fs import FastSpeechTask
+from tasks.speech_editing.speech_editing_base import SpeechEditingBaseTask
 from torch import nn
 from utils.audio.align import mel2token_to_dur
 from utils.commons.hparams import hparams
@@ -17,7 +17,7 @@ from utils.plot.plot import spec_to_figure
 from utils.text.text_encoder import build_token_encoder
 
 
-class A3TTask(FastSpeechTask):
+class A3TTask(SpeechEditingBaseTask):
     def __init__(self):
         super().__init__()
         data_dir = hparams['binary_data_dir']
@@ -68,8 +68,8 @@ class A3TTask(FastSpeechTask):
                                 global_step=self.global_step,
                                 )
             losses = {}
-            self.add_mel_loss(output['mel_out_decoder'] * time_mel_masks, sample['mels'] * time_mel_masks, losses, postfix="_decoder")
-            self.add_mel_loss(output['mel_out_postnet'] * time_mel_masks, sample['mels'] * time_mel_masks, losses, postfix="_postnet")
+            self.add_mel_loss(output['mel_out_decoder'] * time_mel_masks, sample['mels'] * time_mel_masks, losses, postfix="_coarse")
+            self.add_mel_loss(output['mel_out_postnet'] * time_mel_masks, sample['mels'] * time_mel_masks, losses, postfix="_fine")
             output['mel_out'] = output['mel_out_postnet'] * time_mel_masks + sample['mels'] * (1-time_mel_masks)
             # super(A3TTask, self).add_dur_loss(output['dur'], sample['mel2ph'], sample['txt_tokens'], losses)
             return losses, output
@@ -137,53 +137,9 @@ class A3TTask(FastSpeechTask):
 
     def build_scheduler(self, optimizer):
         return [
-            FastSpeechTask.build_scheduler(self, optimizer[0]), # Generator Scheduler
+            SpeechEditingBaseTask.build_scheduler(self, optimizer[0]), # Generator Scheduler
         ]
 
     def on_after_optimization(self, epoch, batch_idx, optimizer, optimizer_idx):
         if self.scheduler is not None:
             self.scheduler[0].step(self.global_step // hparams['accumulate_grad_batches'])
-
-    ############
-    # infer
-    ############
-    def test_start(self):
-        super().test_start()
-        if hparams.get('save_attn', False):
-            os.makedirs(f'{self.gen_dir}/attn', exist_ok=True)
-        self.model.store_inverse_all()
-
-    def test_step(self, sample, batch_idx):
-        assert sample['txt_tokens'].shape[0] == 1, 'only support batch_size=1 in inference'
-        outputs = self.run_model(sample, infer=True)
-        text = sample['text'][0]
-        item_name = sample['item_name'][0]
-        tokens = sample['txt_tokens'][0].cpu().numpy()
-        mel_gt = sample['mels'][0].cpu().numpy()
-        mel_pred = outputs['mel_out'][0].cpu().numpy()
-        mel2ph = sample['mel2ph'][0].cpu().numpy()
-        mel2ph_pred = None
-        str_phs = self.token_encoder.decode(tokens, strip_padding=True)
-        base_fn = f'[{batch_idx:06d}][{item_name.replace("%", "_")}][%s]'
-        if text is not None:
-            base_fn += text.replace(":", "$3A")[:80]
-        base_fn = base_fn.replace(' ', '_')
-        gen_dir = self.gen_dir
-        wav_pred = self.vocoder.spec2wav(mel_pred)
-        self.saving_result_pool.add_job(self.save_result, args=[
-            wav_pred, mel_pred, base_fn % 'P', gen_dir, str_phs, mel2ph_pred])
-        if hparams['save_gt']:
-            wav_gt = self.vocoder.spec2wav(mel_gt)
-            self.saving_result_pool.add_job(self.save_result, args=[
-                wav_gt, mel_gt, base_fn % 'G', gen_dir, str_phs, mel2ph])
-        if hparams.get('save_attn', False):
-            attn = outputs['attn'][0].cpu().numpy()
-            np.save(f'{gen_dir}/attn/{item_name}.npy', attn)
-        print(f"Pred_shape: {mel_pred.shape}, gt_shape: {mel_gt.shape}")
-        return {
-            'item_name': item_name,
-            'text': text,
-            'ph_tokens': self.token_encoder.decode(tokens.tolist()),
-            'wav_fn_pred': base_fn % 'P',
-            'wav_fn_gt': base_fn % 'G',
-        }

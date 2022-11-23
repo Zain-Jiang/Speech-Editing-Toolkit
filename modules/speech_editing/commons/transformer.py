@@ -652,41 +652,6 @@ class TransformerDecoderLayer(nn.Module):
         return self.op.set_buffer(*args)
 
 
-# class TextEncoderPrenet(nn.Module):
-#     def __init__(self, dict_size, hidden_size=256, num_layers=4, kernel_size=9, num_heads=2,
-#                  dropout=0.0):
-#         super().__init__(hidden_size, num_layers, kernel_size, num_heads=num_heads,
-#                          use_pos_embed=False, dropout=dropout)  # use_pos_embed_alpha for compatibility
-#         self.embed_tokens = Embedding(dict_size, hidden_size, 0)
-#         self.embed_scale = math.sqrt(hidden_size)
-#         self.padding_idx = 0
-#         self.embed_positions = SinusoidalPositionalEmbedding(
-#             hidden_size, self.padding_idx, init_size=DEFAULT_MAX_TARGET_POSITIONS,
-#         )
-
-#     def forward(self, txt_tokens, attn_mask=None):
-#         """
-
-#         :param txt_tokens: [B, T]
-#         :return: {
-#             'encoder_out': [B x T x C]
-#         }
-#         """
-#         encoder_padding_mask = txt_tokens.eq(self.padding_idx).data
-#         x = self.forward_embedding(txt_tokens)  # [B, T, H]
-#         if self.num_layers > 0:
-#             x = super(FastSpeechEncoder, self).forward(x, encoder_padding_mask, attn_mask=attn_mask)
-#         return x
-
-#     def forward_embedding(self, txt_tokens):
-#         # embed tokens and positions
-#         x = self.embed_scale * self.embed_tokens(txt_tokens)
-#         positions = self.embed_positions(txt_tokens)
-#         x = x + positions
-#         x = F.dropout(x, p=self.dropout, training=self.training)
-#         return x
-
-
 class FFTBlocks(nn.Module):
     def __init__(self, hidden_size, num_layers, ffn_kernel_size=9, dropout=0.0,
                  num_heads=2, use_pos_embed=True, use_last_norm=True,
@@ -845,23 +810,3 @@ class TransformerDecoder(nn.Module):
         else:
             x = x.transpose(0, 1)  # [B, T, C]
         return x, enc_dec_attn
-
-
-class MelEncoder(nn.Module):
-    def __init__(self, input_dim=80, hidden_size=192):
-        super(MelEncoder, self).__init__()
-        self.encoder = nn.Sequential(
-            nn.Linear(input_dim, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, hidden_size),
-            nn.ReLU(),
-        )
-        # Linear function (out)
-        self.fc_out = nn.Linear(hidden_size, hidden_size)  
-
-    def forward(self, x):
-        out = self.encoder(x)
-
-        # Linear function (out)
-        out = self.fc_out(out)
-        return out

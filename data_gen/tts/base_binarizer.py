@@ -27,8 +27,8 @@ class BinarizationError(Exception):
 
 
 class BaseBinarizer:
-    def __init__(self, processed_data_dir='data/processed/vctk', binary_data_dir='data/binary/vctk'):
-        self.dataset_name = 'vctk'
+    def __init__(self, processed_data_dir='data/processed/libritts', binary_data_dir='data/binary/libritts'):
+        self.dataset_name = 'libritts'
         self.processed_data_dir = processed_data_dir
         self.binary_data_dir = binary_data_dir
         self.items = {}

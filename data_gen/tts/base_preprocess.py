@@ -18,14 +18,15 @@ from utils.text.text_encoder import is_sil_phoneme, build_token_encoder
 class BasePreprocessor:
     def __init__(self):
         self.txt_processor = TxtProcessor()
-        self.dataset_name = 'vctk'
-        self.raw_data_dir = f'data/raw/{self.dataset_name}'
+        self.dataset_name = 'libritts'
+        # self.raw_data_dir = f'data/raw/{self.dataset_name}'
+        self.raw_data_dir = f'/home/jzy/SyntaSpeech/data/raw/LibriTTS'
         self.processed_dir = f'data/processed/{self.dataset_name}'
         self.spk_map_fn = f"{self.processed_dir}/spk_map.json"
         self.reset_phone_dict = True
         self.reset_word_dict = True
         self.word_dict_size = 12500
-        self.num_spk = 109 # 35 for stutter_set and 109 for vctk
+        self.num_spk = 1200 # 35 for stutter_set and 109 for vctk
         self.use_mfa = True
         self.seed = 1234
         self.nsample_per_mfa_group = 1000
@@ -68,6 +69,16 @@ class BasePreprocessor:
                     with open(txt_fn, 'r') as f:
                         txt = f.read()
                     yield {'item_name': item_name, 'wav_fn': wav_fn, 'txt': txt, 'spk_name': spk_name}
+        elif self.dataset_name == 'libritts':
+            from glob import glob
+            wav_fns = sorted(glob(f'{self.raw_data_dir}/*/*/*/*.wav'))
+            for wav_fn in wav_fns:
+                item_name = os.path.basename(wav_fn)[:-4]
+                txt_fn = f'{wav_fn[:-4]}.normalized.txt'
+                with open(txt_fn, 'r') as f:
+                    txt = f.read()
+                spk_name = item_name.split("_")[0]
+                yield {'item_name': item_name, 'wav_fn': wav_fn, 'txt': txt, 'spk_name': spk_name}
 
     def process(self):
         processed_dir = self.processed_dir

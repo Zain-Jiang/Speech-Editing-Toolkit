@@ -5,14 +5,14 @@ amp: false
 audio_num_mel_bins: 80
 audio_sample_rate: 22050
 binarizer_cls: data_gen.tts.base_binarizer.BaseBinarizer
-raw_data_dir: data/raw/stutter_set
-processed_data_dir: data/processed/stutter_set
-binary_data_dir: data/binary/stutter_set
+raw_data_dir: data/raw/libritts
+processed_data_dir: /mnt/sda/jzy/StutterSpeech_dataset/processed/libritts
+binary_data_dir: /mnt/sda/jzy/StutterSpeech_dataset/binary/libritts
 check_val_every_n_epoch: 10
 clip_grad_norm: 1
 clip_grad_value: 0
 debug: false
-ds_name: stutter_speech
+ds_name: vctk
 ds_workers: 2
 endless_ds: true
 eval_max_batches: -1
@@ -47,7 +47,7 @@ scheduler: warmup
 seed: 1234
 sigmoid_scale: false
 sort_by_len: true
-task_cls: tasks.speech_editing.campnet.CampNetTask
+task_cls: tasks.speech_editing.spec_denoiser.SpeechDenoiserTask
 tb_log_interval: 100
 test_input_yaml: ''
 test_num: 100
@@ -67,9 +67,25 @@ mask_ratio: 0.12
 
 
 # Mask
-mask_type: 'random'
-training_mask_ratio: 0.12
+mask_type: 'alignment_aware'
+training_mask_ratio: 0.80
 infer_mask_ratio: 0.30
+
+
+# diffusion model
+diff_decoder_type: 'wavenet'
+dilation_cycle_length: 1
+residual_layers: 20
+residual_channels: 256
+keep_bins: 80
+spec_min: [ ]
+spec_max: [ ]
+diff_loss_type: l1
+max_beta: 0.06
+# diffusion
+timesteps: 4
+timescale: 1
+schedule_type: 'vpsde'
 
 
 # Modules
@@ -170,7 +186,7 @@ f0_max: 600
 f0_min: 80
 fmax: 7600
 fmin: 55
-frames_multiple: 4
+frames_multiple: 16
 loud_norm: false
 mel_vmax: 1.5
 mel_vmin: -6

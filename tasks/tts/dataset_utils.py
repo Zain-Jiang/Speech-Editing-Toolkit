@@ -8,7 +8,7 @@ import torch.distributions
 from utils.audio.pitch.utils import norm_interp_f0, denorm_f0
 from utils.commons.dataset_utils import BaseDataset, collate_1d_or_2d
 from utils.commons.indexed_datasets import IndexedDataset
-from utils.spec_aug.time_mask import generate_time_mask
+from utils.spec_aug.time_mask import generate_time_mask, generate_alignment_aware_time_mask
 
 
 class BaseSpeechDataset(BaseDataset):
@@ -186,6 +186,7 @@ class StutterSpeechDataset(BaseSpeechDataset):
     def __getitem__(self, index):
         sample = super(StutterSpeechDataset, self).__getitem__(index)
         item = self._get_item(index)
+        sample['wav_fn'] = item['wav_fn']
         mel = sample['mel']
         T = mel.shape[0]
         sample['mel2ph'] = mel2ph = torch.LongTensor(item['mel2ph'])[:T]
@@ -193,7 +194,14 @@ class StutterSpeechDataset(BaseSpeechDataset):
 
         # Load stutter mask & generate time mask for speech editing
         # sample['stutter_mel_mask'] = torch.LongTensor(item['stutter_mel_mask'][:max_frames])
-        time_mel_mask = generate_time_mask(torch.zeros_like(sample['mel']), ratio=self.hparams['mask_ratio'])
+        if self.hparams['infer'] == False:
+            mask_ratio = self.hparams['training_mask_ratio']
+        else:
+            mask_ratio = self.hparams['infer_mask_ratio']
+        if self.hparams.get('mask_type') == 'random':
+            time_mel_mask = generate_time_mask(torch.zeros_like(sample['mel']), ratio=mask_ratio)
+        elif self.hparams.get('mask_type') == 'alignment_aware':
+            time_mel_mask = generate_alignment_aware_time_mask(torch.zeros_like(sample['mel']), sample['mel2ph'], ratio=mask_ratio)
         sample['time_mel_mask'] = time_mel_mask
         return sample
 
@@ -201,12 +209,10 @@ class StutterSpeechDataset(BaseSpeechDataset):
         if len(samples) == 0:
             return {}
         batch = super(StutterSpeechDataset, self).collater(samples)
+        batch['wav_fn'] = [s['wav_fn'] for s in samples]
         batch['mel2ph'] = collate_1d_or_2d([s['mel2ph'] for s in samples], 0.0)
         # stutter_mel_masks = collate_1d_or_2d([s['stutter_mel_mask'] for s in samples], 0)
         # batch['stutter_mel_masks'] = stutter_mel_masks
         time_mel_masks = collate_1d_or_2d([s['time_mel_mask'] for s in samples], 0)
         batch['time_mel_masks'] = time_mel_masks
-        if self.hparams['use_word_input']:
-            batch['txt_tokens'] = batch['word_tokens']
-            batch['txt_lengths'] = torch.LongTensor([s['word_tokens'].numel() for s in samples])
         return batch

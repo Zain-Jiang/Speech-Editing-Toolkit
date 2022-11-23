@@ -4,7 +4,8 @@ from torch import nn
 import torch.nn.functional as F
 from modules.speech_editing.commons.conformer_layers import Swish, ConvolutionModule, EncoderLayer, MultiLayeredConv1d
 from modules.commons.layers import Embedding
-from modules.speech_editing.commons.transformer import SinusoidalPositionalEmbedding, MelEncoder, MultiheadAttention
+from modules.speech_editing.commons.transformer import SinusoidalPositionalEmbedding, MultiheadAttention
+from modules.speech_editing.commons.mel_encoder import MelEncoder
 
 DEFAULT_MAX_SOURCE_POSITIONS = 2000
 DEFAULT_MAX_TARGET_POSITIONS = 2000

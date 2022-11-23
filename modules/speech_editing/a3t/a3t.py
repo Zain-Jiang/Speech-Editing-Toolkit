@@ -6,10 +6,8 @@ from torch.nn import Linear
 
 from modules.commons.conv import ConvBlocks
 from modules.commons.layers import Embedding
-from modules.tts.ps_adv.transformer_decoder import TransformerEncoder, TransformerDecoder, MelEncoder
-from modules.speech_editing.commons.conformer import ConformerEncoder, ConformerDecoder
-from modules.tts.commons.align_ops import clip_mel2token_to_multiple, build_word_mask, expand_states
-from modules.tts.fs import FS_DECODERS, FastSpeech
+from modules.speech_editing.a3t.conformer import ConformerEncoder, ConformerDecoder
+from modules.tts.fs import FastSpeech
 from modules.commons.nar_tts_modules import DurationPredictor
 
 
@@ -24,7 +22,6 @@ class A3T(FastSpeech):
                 self.spk_embed_proj = nn.Linear(256, self.hidden_size)
             elif self.hparams['use_spk_id']:
                 self.spk_embed_proj = Embedding(hparams['num_spk'], self.hidden_size)
-        self.mel_encoder = MelEncoder()
         predictor_hidden = hparams['predictor_hidden'] if hparams['predictor_hidden'] > 0 else self.hidden_size
         self.dur_predictor = DurationPredictor(
             self.hidden_size,
@@ -72,7 +69,7 @@ class A3T(FastSpeech):
         mel_out_decoder = self.mel_out_decoder(decoder_out) * mel_nonpadding
 
         mel_decoder = mels * (1-time_mel_masks) + mel_out_decoder * time_mel_masks
-        mel_input_postnet = self.encoder.mel_embed(mel_out_decoder) * mel_nonpadding
+        mel_input_postnet = self.encoder.mel_embed(mel_decoder) * mel_nonpadding
         mel_out_postnet = self.a3t_postnet(x=mel_input_postnet)
         mel_out_postnet = mel_out_postnet * mel_nonpadding
         mel_out_postnet = self.mel_out_postnet(mel_out_postnet) * mel_nonpadding

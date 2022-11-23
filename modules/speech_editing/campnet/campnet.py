@@ -6,7 +6,8 @@ from torch.nn import Linear
 
 from modules.commons.conv import ConvBlocks
 from modules.commons.layers import Embedding
-from modules.tts.ps_adv.transformer_decoder import TransformerEncoder, TransformerDecoder, MelEncoder
+from modules.speech_editing.commons.transformer import TransformerEncoder, TransformerDecoder
+from modules.speech_editing.commons.mel_encoder import MelEncoder
 from modules.tts.fs import FS_DECODERS, FastSpeech
 
 

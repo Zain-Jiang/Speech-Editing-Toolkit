@@ -47,7 +47,7 @@ scheduler: warmup
 seed: 1234
 sigmoid_scale: false
 sort_by_len: true
-task_cls: tasks.tts.a3t.A3TTask
+task_cls: tasks.speech_editing.a3t.A3TTask
 tb_log_interval: 100
 test_input_yaml: ''
 test_num: 100
@@ -64,6 +64,12 @@ warmup_updates: 8000
 weight_decay: 0
 word_dict_size: 40500
 mask_ratio: 0.8
+
+
+# Mask
+mask_type: 'alignment_aware'
+training_mask_ratio: 0.80
+infer_mask_ratio: 0.30
 
 
 # Modules
@@ -171,6 +177,7 @@ mel_vmin: -6
 min_frames: 0
 noise_scale: 0.8
 win_size: 1024
+pitch_extractor: parselmouth
 
 
 # Infer
@@ -178,6 +185,8 @@ gen_dir_name: ''
 infer: false
 infer_post_glow: true
 out_wav_norm: false
+test_ids: [ ]
+eval_mcd: False
 
 
 # Loss lambda
