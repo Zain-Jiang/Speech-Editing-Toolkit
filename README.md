@@ -21,7 +21,7 @@ This repo contains unofficial PyTorch implementation of:
 [Demo page](https://hairuo55.github.io/CampNet)
 - [A3T: Alignment-Aware Acoustic and Text Pretraining for Speech Synthesis and Editing](https://proceedings.mlr.press/v162/bai22d/bai22d.pdf) (ICML 2022)  
 [Demo page](https://educated-toothpaste-462.notion.site/Demo-b0edd300e6004c508744c6259369a468) | [Official code](https://github.com/richardbaihe/a3t) (We are still working on it.)
-- We will publish our recent work StutterSpeech Later.
+- Our implementation of a generator-based spectrogram denoise diffusion models for speech editing.
 
 ## Supported Datasets
 Our framework supports the following datasets:
