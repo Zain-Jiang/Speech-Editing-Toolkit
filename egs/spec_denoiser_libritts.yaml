@@ -186,7 +186,7 @@ f0_max: 600
 f0_min: 80
 fmax: 7600
 fmin: 55
-frames_multiple: 16
+frames_multiple: 1
 loud_norm: false
 mel_vmax: 1.5
 mel_vmin: -6

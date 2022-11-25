@@ -79,7 +79,7 @@ class FastSpeech(nn.Module):
             self.dec_inp_noise_proj = nn.Linear(self.hidden_size + self.z_channels, self.hidden_size)
 
     def forward(self, txt_tokens, mel2ph=None, spk_embed=None, spk_id=None,
-                f0=None, uv=None, infer=False, **kwargs):
+                f0=None, uv=None, skip_decoder=True, infer=False, **kwargs):
         ret = {}
         encoder_out = self.encoder(txt_tokens)  # [B, T, C]
         src_nonpadding = (txt_tokens > 0).float()[:, :, None]
@@ -98,6 +98,8 @@ class FastSpeech(nn.Module):
 
         # decoder input
         ret['decoder_inp'] = decoder_inp = (decoder_inp + style_embed) * tgt_nonpadding
+        if skip_decoder:
+            return ret
         if self.hparams['dec_inp_add_noise']:
             B, T, _ = decoder_inp.shape
             z = kwargs.get('adv_z', torch.randn([B, T, self.z_channels])).to(decoder_inp.device)

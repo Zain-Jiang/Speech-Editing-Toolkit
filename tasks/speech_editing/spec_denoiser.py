@@ -40,8 +40,8 @@ class SpeechDenoiserTask(SpeechEditingBaseTask):
         txt_tokens = sample['txt_tokens']  # [B, T_t]
         target = sample['mels']  # [B, T_s, 80]
         mel2ph = sample['mel2ph']
-        f0 = None
-        uv = None
+        f0 = sample['f0']
+        uv = sample['uv']
         energy = None
         time_mel_masks = sample['time_mel_masks'][:,:,None]
         spk_embed = sample.get('spk_embed') if not hparams['use_spk_id'] else sample.get('spk_ids')
@@ -51,9 +51,9 @@ class SpeechDenoiserTask(SpeechEditingBaseTask):
         losses = {}
         self.add_mel_loss(output['mel_out']*time_mel_masks, target*time_mel_masks, losses, postfix="_coarse")
         output['mel_out'] = output['mel_out']*time_mel_masks + target*(1-time_mel_masks)
-        # self.add_dur_loss(output['dur'], mel2ph, txt_tokens, losses=losses)
-        # if hparams['use_pitch_embed']:
-        #     self.add_pitch_loss(output, sample, losses)
+        self.add_dur_loss(output['dur'], mel2ph, txt_tokens, losses=losses)
+        if hparams['use_pitch_embed']:
+            self.add_pitch_loss(output, sample, losses)
         # if hparams['use_energy_embed']:
         #     self.add_energy_loss(output['energy_pred'], energy, losses)
         if not infer:

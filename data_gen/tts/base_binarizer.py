@@ -13,7 +13,7 @@ from utils.audio import librosa_wav2spec
 from utils.audio.align import get_mel2ph, mel2token_to_dur
 from utils.audio.cwt import get_lf0_cwt, get_cont_lf0
 from utils.audio.pitch.utils import f0_to_coarse
-from utils.audio.pitch_extractors import extract_pitch_simple
+from utils.audio.pitch_extractors import extract_pitch
 from utils.commons.hparams import hparams
 from utils.commons.indexed_datasets import IndexedDatasetBuilder
 from utils.commons.multiprocess_utils import multiprocess_run_tqdm
@@ -40,10 +40,12 @@ class BaseBinarizer:
         # text2mel parameters
         self.text2mel_params = {'fft_size': 1024, 'hop_size': 256, 'win_size': 1024,
                                 'audio_num_mel_bins': 80, 'fmin': 55, 'fmax': 7600,
+                                'f0_min': 80, 'f0_max': 600, 'pitch_extractor': 'parselmouth',
                                 'audio_sample_rate': 22050, 'loud_norm': False,
                                 'mfa_min_sil_duration': 0.1, 'trim_eos_bos': False,
                                 'with_align': True, 'text2mel_params': False,
-                                'dataset_name': self.dataset_name}
+                                'dataset_name': self.dataset_name,
+                                'with_f0': True}
 
     def load_meta_data(self):
         processed_data_dir = self.processed_data_dir
@@ -158,8 +160,8 @@ class BaseBinarizer:
                     item['dur_word'] = item['dur_word'][1:-1]
                     item['len'] = item['mel'].shape[0]
                     item['wav'] = wav[n_bos_frames * text2mel_params['hop_size']:len(wav) - n_eos_frames * text2mel_params['hop_size']]
-            # if binarization_args['with_f0']:
-            #     cls.process_pitch(item, n_bos_frames, n_eos_frames)
+            if text2mel_params['with_f0']:
+                cls.process_pitch(item, n_bos_frames, n_eos_frames, text2mel_params)
         except BinarizationError as e:
             print(f"| Skip item ({e}). item_name: {item_name}, wav_fn: {wav_fn}")
             return None
@@ -224,24 +226,26 @@ class BaseBinarizer:
         dur_word = mel2token_to_dur(mel2word, len(item['word_token']))
         item['dur_word'] = dur_word.tolist()  # [T_word]
 
-    # @staticmethod
-    # def process_pitch(item, n_bos_frames, n_eos_frames):
-    #     wav, mel = item['wav'], item['mel']
-    #     f0 = extract_pitch_simple(item['wav'])
-    #     if sum(f0) == 0:
-    #         raise BinarizationError("Empty f0")
-    #     assert len(mel) == len(f0), (len(mel), len(f0))
-    #     pitch_coarse = f0_to_coarse(f0)
-    #     item['f0'] = f0
-    #     item['pitch'] = pitch_coarse
-    #     if hparams['binarization_args']['with_f0cwt']:
-    #         uv, cont_lf0_lpf = get_cont_lf0(f0)
-    #         logf0s_mean_org, logf0s_std_org = np.mean(cont_lf0_lpf), np.std(cont_lf0_lpf)
-    #         cont_lf0_lpf_norm = (cont_lf0_lpf - logf0s_mean_org) / logf0s_std_org
-    #         cwt_spec, scales = get_lf0_cwt(cont_lf0_lpf_norm)
-    #         item['cwt_spec'] = cwt_spec
-    #         item['cwt_mean'] = logf0s_mean_org
-    #         item['cwt_std'] = logf0s_std_org
+    @staticmethod
+    def process_pitch(item, n_bos_frames, n_eos_frames, text2mel_params):
+        wav, mel = item['wav'], item['mel']
+        f0 = extract_pitch(text2mel_params['pitch_extractor'], wav,
+                         text2mel_params['hop_size'], text2mel_params['audio_sample_rate'],
+                         f0_min=text2mel_params['f0_min'], f0_max=text2mel_params['f0_max'])
+        if sum(f0) == 0:
+            raise BinarizationError("Empty f0")
+        assert len(mel) == len(f0), (len(mel), len(f0))
+        pitch_coarse = f0_to_coarse(f0)
+        item['f0'] = f0
+        item['pitch'] = pitch_coarse
+        # if hparams['binarization_args']['with_f0cwt']:
+        #     uv, cont_lf0_lpf = get_cont_lf0(f0)
+        #     logf0s_mean_org, logf0s_std_org = np.mean(cont_lf0_lpf), np.std(cont_lf0_lpf)
+        #     cont_lf0_lpf_norm = (cont_lf0_lpf - logf0s_mean_org) / logf0s_std_org
+        #     cwt_spec, scales = get_lf0_cwt(cont_lf0_lpf_norm)
+        #     item['cwt_spec'] = cwt_spec
+        #     item['cwt_mean'] = logf0s_mean_org
+        #     item['cwt_std'] = logf0s_std_org
 
     @staticmethod
     def get_spk_embed(wav, ctx):

@@ -7,11 +7,9 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 from tqdm import tqdm
-from einops import rearrange
 
 from modules.tts.fs import FastSpeech
-from modules.speech_editing.commons.transformer import MelEncoder
-from modules.tts.commons.align_ops import clip_mel2token_to_multiple, expand_states
+from modules.speech_editing.commons.mel_encoder import MelEncoder
 from utils.commons.hparams import hparams
 
 
@@ -158,11 +156,9 @@ class GaussianDiffusion(nn.Module):
                 ref_mels=None, f0=None, uv=None, energy=None, infer=False):
         b, *_, device = *txt_tokens.shape, txt_tokens.device
         ret = {}
-        # ret = self.f(txt_tokens, mel2ph, spk_embed, ref_mels, f0, uv, energy,
-                    #    skip_decoder=True, infer=infer)
-        encoder_out = self.fs.encoder(txt_tokens)  # [B, T, C]
-        src_nonpadding = (txt_tokens > 0).float()[:, :, None]
-        decoder_inp = expand_states(encoder_out, mel2ph)
+        ret = self.fs(txt_tokens, mel2ph, spk_embed, f0, uv, energy,
+                       skip_decoder=True, infer=infer)
+        decoder_inp = ret['decoder_inp']
         tgt_nonpadding = (mel2ph > 0).float()[:, :, None]
         decoder_inp += self.mel_encoder(ref_mels*(1-time_mel_masks)) * tgt_nonpadding
 

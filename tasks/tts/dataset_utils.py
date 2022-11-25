@@ -192,6 +192,27 @@ class StutterSpeechDataset(BaseSpeechDataset):
         sample['mel2ph'] = mel2ph = torch.LongTensor(item['mel2ph'])[:T]
         max_frames = sample['mel'].shape[0]
 
+        ph_token = sample['txt_token']
+        if self.hparams['use_pitch_embed']:
+            assert 'f0' in item
+            pitch = torch.LongTensor(item.get(self.hparams.get('pitch_key', 'pitch')))[:T]
+            f0, uv = norm_interp_f0(item["f0"][:T])
+            uv = torch.FloatTensor(uv)
+            f0 = torch.FloatTensor(f0)
+            if self.hparams['pitch_type'] == 'ph':
+                if "f0_ph" in item:
+                    f0 = torch.FloatTensor(item['f0_ph'])
+                else:
+                    f0 = denorm_f0(f0, None)
+                f0_phlevel_sum = torch.zeros_like(ph_token).float().scatter_add(0, mel2ph - 1, f0)
+                f0_phlevel_num = torch.zeros_like(ph_token).float().scatter_add(
+                    0, mel2ph - 1, torch.ones_like(f0)).clamp_min(1)
+                f0_ph = f0_phlevel_sum / f0_phlevel_num
+                f0, uv = norm_interp_f0(f0_ph)
+        else:
+            f0, uv, pitch = None, None, None
+        sample["f0"], sample["uv"], sample["pitch"] = f0, uv, pitch
+
         # Load stutter mask & generate time mask for speech editing
         # sample['stutter_mel_mask'] = torch.LongTensor(item['stutter_mel_mask'][:max_frames])
         if self.hparams['infer'] == False:
@@ -210,7 +231,20 @@ class StutterSpeechDataset(BaseSpeechDataset):
             return {}
         batch = super(StutterSpeechDataset, self).collater(samples)
         batch['wav_fn'] = [s['wav_fn'] for s in samples]
-        batch['mel2ph'] = collate_1d_or_2d([s['mel2ph'] for s in samples], 0.0)
+
+        if self.hparams['use_pitch_embed']:
+            f0 = collate_1d_or_2d([s['f0'] for s in samples], 0.0)
+            pitch = collate_1d_or_2d([s['pitch'] for s in samples])
+            uv = collate_1d_or_2d([s['uv'] for s in samples])
+        else:
+            f0, uv, pitch = None, None, None
+        mel2ph = collate_1d_or_2d([s['mel2ph'] for s in samples], 0.0)
+        batch.update({
+            'mel2ph': mel2ph,
+            'pitch': pitch,
+            'f0': f0,
+            'uv': uv,
+        })
         # stutter_mel_masks = collate_1d_or_2d([s['stutter_mel_mask'] for s in samples], 0)
         # batch['stutter_mel_masks'] = stutter_mel_masks
         time_mel_masks = collate_1d_or_2d([s['time_mel_mask'] for s in samples], 0)

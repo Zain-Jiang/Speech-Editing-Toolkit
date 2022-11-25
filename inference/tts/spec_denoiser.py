@@ -3,13 +3,14 @@ import numpy as np
 import torch
 from data_gen.tts.base_preprocess import BasePreprocessor
 from inference.tts.base_tts_infer import BaseTTSInfer
-from modules.speech_editing.spec_denoiser import GaussianDiffusion
-from modules.speech_editing.diffnet import DiffNet
+from modules.speech_editing.spec_denoiser.spec_denoiser import GaussianDiffusion
+from modules.speech_editing.spec_denoiser.diffnet import DiffNet
 from utils.commons.ckpt_utils import load_ckpt
 from utils.commons.hparams import hparams
 from utils.spec_aug.time_mask import generate_time_mask
 from utils.text.text_encoder import is_sil_phoneme
 from utils.audio.align import get_mel2ph
+from resemblyzer import VoiceEncoder
 
 
 DIFF_DECODERS = {
@@ -33,6 +34,7 @@ class StutterSpeechInfer(BaseTTSInfer):
         self.vocoder = self.build_vocoder()
         self.vocoder.eval()
         self.vocoder.to(self.device)
+        self.spk_embeding = VoiceEncoder(device='cpu')
 
     def build_model(self):
         ph_dict_size = len(self.ph_encoder)
@@ -51,10 +53,47 @@ class StutterSpeechInfer(BaseTTSInfer):
 
     def forward_model(self, inp):
         sample = self.input_to_batch(inp)
+
+        # forward the edited txt to the encoder
+        edited_txt_tokens = sample['edited_txt_tokens']
+        mel = sample['mel']
+        ret = {}
+        encoder_out = self.model.fs.encoder(edited_txt_tokens)  # [B, T, C]
+        src_nonpadding = (edited_txt_tokens > 0).float()[:, :, None]
+        style_embed = self.model.fs.forward_style_embed(sample['spk_embed'], None)
+        
+        # forward duration model to get the duration for whole edited text seq
+        dur_inp = (encoder_out + style_embed) * src_nonpadding
+        edited_mel2ph = self.model.fs.forward_dur(dur_inp, None, edited_txt_tokens, ret)
+        edited_mel2word = torch.Tensor([sample['edited_ph2word'][0].numpy()[p - 1] for p in edited_mel2ph[0]]).to(self.device)[None, :]
+        
+        # get mel2ph of the edited region by concating the head and tial of the original mel2ph
+        edited_word_idx = 8
+        changed_idx = [7,14]
+        mel2ph = sample['mel2ph']
+        mel2word = sample['mel2word']
+        length_edited = edited_mel2word[(edited_mel2word>=changed_idx[0]) & (edited_mel2word<=changed_idx[1])].size(0) - mel2word[mel2word==edited_word_idx].size(0)
+        edited_mel2ph_ = torch.zeros((1, mel2ph.size(1)+length_edited)).to(self.device)
+        head_idx = mel2word[mel2word<edited_word_idx].size(0)
+        tail_idx = mel2word[mel2word<=edited_word_idx].size(0) + length_edited
+        edited_mel2ph_[:, :head_idx] = mel2ph[:, :head_idx]
+        edited_mel2ph_[:, head_idx:tail_idx] = edited_mel2ph[(edited_mel2word>=changed_idx[0]) & (edited_mel2word<=changed_idx[1])]
+        edited_mel2ph_[:, tail_idx:] = mel2ph[mel2word>edited_word_idx] - mel2ph[mel2word>edited_word_idx].min() + edited_mel2ph[(edited_mel2word>=changed_idx[0]) & (edited_mel2word<=changed_idx[1])].max() + 2
+        edited_mel2ph = edited_mel2ph_.long()
+
+        # create new ref mel
+        ref_mels = torch.zeros((1, edited_mel2ph.size(1), mel.size(2))).to(self.device)
+        T = min(ref_mels.size(1), mel.size(1))
+        ref_mels[:, :head_idx, :] = mel[:, :head_idx, :]
+        ref_mels[:, tail_idx:, :] = mel[mel2word>edited_word_idx]
+        # create time mask 
+        time_mel_masks = torch.zeros((1, edited_mel2ph.size(1), 1)).to(self.device)
+        time_mel_masks[:, head_idx:tail_idx] = 1.0
+        
         with torch.no_grad():
-            output = self.model(sample['txt_tokens'], time_mel_masks=sample['time_mel_masks'], mel2ph=sample['mel2ph'], spk_embed=None,
-                       ref_mels=sample['mel'], f0=None, uv=None, energy=None, infer=True)
-            mel_out = output['mel_out'] * sample['time_mel_masks'] + sample['mel'] * (1-sample['time_mel_masks'])
+            output = self.model(sample['edited_txt_tokens'], time_mel_masks=time_mel_masks, mel2ph=edited_mel2ph, spk_embed=sample['spk_embed'],
+                       ref_mels=ref_mels, f0=None, uv=None, energy=None, infer=True)
+            mel_out = output['mel_out'] * time_mel_masks + ref_mels * (1-time_mel_masks)
             wav_out = self.run_vocoder(mel_out)
             wav_gt = self.run_vocoder(sample['mel'])
 
@@ -75,38 +114,42 @@ class StutterSpeechInfer(BaseTTSInfer):
         text_raw = inp['text']
         item_name = inp.get('item_name', '<ITEM_NAME>')
         spk_name = inp.get('spk_name', '<SINGLE_SPK>')
-        ph, txt, _, _, ph_gb_word = preprocessor.txt_to_ph(
+        ph, txt, _, ph2word, ph_gb_word = preprocessor.txt_to_ph(
             preprocessor.txt_processor, text_raw)
         ph_token = self.ph_encoder.encode(ph)
-        # spk_id = self.spk_map[spk_name]
         
-        # masked prediction related
+        # get ph for edited txt
+        edited_text_raw = inp['edited_text']
+        edited_ph, _, _, edited_ph2word, _ = preprocessor.txt_to_ph(
+            preprocessor.txt_processor, edited_text_raw)
+        edited_ph_token = self.ph_encoder.encode(edited_ph)
+        
+        # Generate forced alignment
         wav = inp['wav']
         mel = inp['mel']
-
-        # Generate forced alignment
         tg_fn = f'inference/audio/{item_name}.lab'
-        ph_gb_word_nosil = "_".join(ph.split(' ')[1:-1]).replace('_|_', ' ')
+        ph_gb_word_nosil = " ".join(["_".join([p for p in w.split("_") if not is_sil_phoneme(p)])
+                                for w in ph_gb_word.split(" ") if not is_sil_phoneme(w)])
         with open(tg_fn, 'w') as f_txt:
             f_txt.write(ph_gb_word_nosil)
+        with open('data/processed/vctk/mfa_dict.txt', 'r') as f: # update mfa dict for unseen word
+            lines = f.readlines()
+        with open('data/processed/vctk/mfa_dict.txt', 'a+') as f:
+            for item in ph_gb_word_nosil.split(" "):
+                item = item + ' ' + ' '.join(item.split('_')) + '\n'
+                if item not in lines:
+                    f.writelines([item])
         print("Generating forced alignments with mfa. Please wait for about 1 minutes.")
         os.system('mfa align --clean inference/audio data/processed/vctk/mfa_dict.txt data/processed/vctk/mfa_model.zip inference/audio/mfa_out')
         mfa_textgrid = f'inference/audio/mfa_out/{item_name}.TextGrid'
         mel2ph, dur = self.process_align(mfa_textgrid, ph, ph_token, mel)
+        mel2word = [ph2word[p - 1] for p in mel2ph] # [T_mel]
 
-        # Obtain ph-level mask
-        mel2ph = np.array(mel2ph)
-        ph_mask = np.zeros((mel2ph.max()+1).item())
-        ph_mask[15:18] = 1.0
-        # Obtain mel-level mask
-        mel2ph_ = torch.from_numpy(mel2ph).long()
-        ph_mask = torch.from_numpy(ph_mask).float()
-        ph_mask = torch.nn.functional.pad(ph_mask, [1, 0])
-        time_mel_masks = torch.gather(ph_mask, 0, mel2ph_).numpy()  # [B, T, H]
-
-        item = {'item_name': item_name, 'text': txt, 'ph': ph,
-                'ph_token': ph_token, 'mel2ph': mel2ph,
-                'mel': mel, 'wav': wav, 'time_mel_masks': time_mel_masks}
+        item = {'item_name': item_name, 'text': txt, 'ph': ph, 
+                'ph2word': ph2word, 'edited_ph2word': edited_ph2word,
+                'ph_token': ph_token, 'edited_ph_token': edited_ph_token, 
+                'mel2ph': mel2ph, 'mel2word': mel2word,
+                'mel': mel, 'wav': wav}
         item['ph_len'] = len(item['ph_token'])
         return item
 
@@ -125,26 +168,38 @@ class StutterSpeechInfer(BaseTTSInfer):
         item_names = [item['item_name']]
         text = [item['text']]
         ph = [item['ph']]
+        ph2word = torch.LongTensor(item['ph2word'])[None, :].to(self.device)
+        edited_ph2word = torch.LongTensor(item['edited_ph2word'])[None, :].to(self.device)
         mel2ph = torch.LongTensor(item['mel2ph'])[None, :].to(self.device)
+        mel2word = torch.LongTensor(item['mel2word'])[None, :].to(self.device)
         txt_tokens = torch.LongTensor(item['ph_token'])[None, :].to(self.device)
         txt_lengths = torch.LongTensor([txt_tokens.shape[1]]).to(self.device)
+        edited_txt_tokens = torch.LongTensor(item['edited_ph_token'])[None, :].to(self.device)
         # spk_ids = torch.LongTensor(item['spk_id'])[None, :].to(self.device)
 
         # masked prediction related
         mel = torch.FloatTensor(item['mel'])[None, :].to(self.device)
         wav = torch.FloatTensor(item['wav'])[None, :].to(self.device)
-        time_mel_masks = torch.FloatTensor(item['time_mel_masks'])[None, :, None].to(self.device)
+
+        # get spk embed
+        spk_embed = self.spk_embeding.embed_utterance(item['wav'].astype(float))
+        spk_embed = torch.FloatTensor(spk_embed[None, :]).to(self.device)
+
         batch = {
             'item_name': item_names,
             'text': text,
             'ph': ph,
+            'ph2word': ph2word,
+            'edited_ph2word': edited_ph2word,
             'mel2ph': mel2ph,
+            'mel2word': mel2word,
             'txt_tokens': txt_tokens,
             'txt_lengths': txt_lengths,
+            'edited_txt_tokens': edited_txt_tokens,
             # 'spk_ids': spk_ids,
             'mel': mel, 
-            'wav': wav, 
-            'time_mel_masks': time_mel_masks
+            'wav': wav,
+            'spk_embed': spk_embed,
         }
         return batch
 
@@ -159,9 +214,11 @@ class StutterSpeechInfer(BaseTTSInfer):
         set_hparams()
         wav2spec_res = librosa_wav2spec('inference/audio/1.wav', fmin=55, fmax=7600, sample_rate=22050)
         inp = {
-            'text': 'Nice to meet you Trump.',
+            # 'text': 'Nice to meet you man.',
+            # 'edited_text': 'Nice to meet you, we happy few.',
             'item_name': '1',
-            # 'text': 'And several new measures to protect Our security and prosperity.',
+            'text': 'This is a LibriVox recording.',
+            'edited_text': 'This is a Happy new year Trump recording.',
             'mel': wav2spec_res['mel'],
             'wav': wav2spec_res['wav'],
         }
