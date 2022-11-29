@@ -5,12 +5,12 @@ import torch.nn.functional as F
 import torch.optim
 import torch.utils.data
 
-from tasks.tts.dataset_utils import FastSpeechWordDataset
+from tasks.speech_editing.dataset_utils import FastSpeechWordDataset
 from tasks.tts.speech_base import SpeechBaseTask
 from utils.audio.align import mel2token_to_dur
 from utils.audio.pitch.utils import denorm_f0
 from utils.commons.hparams import hparams
-from eval.mcd import mcd
+from utils.eval.mcd import get_metrics_mels
 
 
 class SpeechEditingBaseTask(SpeechBaseTask):
@@ -18,6 +18,8 @@ class SpeechEditingBaseTask(SpeechBaseTask):
         super().__init__()
         self.dataset_cls = FastSpeechWordDataset
         self.sil_ph = self.token_encoder.sil_phonemes()
+
+        self.mcd_dict = {'mcd_total': 0, 'num': 0}
 
     def build_tts_model(self):
         dict_size = len(self.token_encoder)
@@ -171,6 +173,11 @@ class SpeechEditingBaseTask(SpeechBaseTask):
             self.saving_result_pool.add_job(self.save_result, args=[
                 wav_gt, mel_gt, base_fn % 'G', gen_dir, str_phs, mel2ph])
         
+        # Calculate MCD scores (Log Db level)
+        mcd, _, _ = get_metrics_mels(mel_pred.T, mel_gt.T)
+        self.mcd_dict['mcd_total'] += mcd
+        self.mcd_dict['num'] += 1
+        
         # print(f"Pred_shape: {mel_pred.shape}, gt_shape: {mel_gt.shape}")
         return {
             'item_name': item_name,
@@ -183,11 +190,6 @@ class SpeechEditingBaseTask(SpeechBaseTask):
 
     def test_end(self, outputs):
         super().test_end(outputs)
-        if hparams['eval_mcd'] == True:
-            mcd_total = 0
-            for item in outputs:
-                wav_fn_pred = self.gen_dir + '/wavs/' + item['wav_fn_pred'] + '.wav'
-                # wav_fn_gt = self.gen_dir + '/wavs/' + item['wav_fn_gt'] + '.wav'
-                wav_fn_orig = item['wav_fn_orig']
-                mcd_total += mcd(wav_fn_pred, wav_fn_orig)
-            print(f"MCD Score: {mcd_total / len(outputs)}.")
+        #  MCD score
+        MCD_value = float(self.mcd_dict['mcd_total']) / float(self.mcd_dict['num'])
+        print("MCD = : {:f}".format(MCD_value))

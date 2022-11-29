@@ -47,7 +47,7 @@ scheduler: warmup
 seed: 1234
 sigmoid_scale: false
 sort_by_len: true
-task_cls: tasks.speech_editing.spec_denoiser.SpeechDenoiserTask
+task_cls: tasks.speech_editing.edittts.EditTTSTask
 tb_log_interval: 100
 test_input_yaml: ''
 test_num: 100
@@ -63,30 +63,13 @@ valid_set_name: valid
 warmup_updates: 8000
 weight_decay: 0
 word_dict_size: 40500
-mask_ratio: 0.12
+mask_ratio: 0.8
 
 
 # Mask
 mask_type: 'alignment_aware'
 training_mask_ratio: 0.80
 infer_mask_ratio: 0.30
-
-
-# diffusion model
-diff_decoder_type: 'wavenet'
-latent_cond_type: 'add'
-dilation_cycle_length: 1
-residual_layers: 20
-residual_channels: 256
-keep_bins: 80
-spec_min: [ ]
-spec_max: [ ]
-diff_loss_type: l1
-max_beta: 0.06
-# diffusion
-timesteps: 8
-timescale: 1
-schedule_type: 'vpsde'
 
 
 # Modules
@@ -167,7 +150,7 @@ use_fvae: false
 use_gt_dur: false
 use_gt_f0: false
 use_latent_cond: false
-use_pitch_embed: true
+use_pitch_embed: false
 use_pos_embed: true
 use_post_flow: true
 use_prior_flow: true
@@ -187,7 +170,7 @@ f0_max: 600
 f0_min: 80
 fmax: 7600
 fmin: 55
-frames_multiple: 1
+frames_multiple: 4
 loud_norm: false
 mel_vmax: 1.5
 mel_vmin: -6
@@ -195,7 +178,6 @@ min_frames: 0
 noise_scale: 0.8
 win_size: 1024
 pitch_extractor: parselmouth
-pitch_type: frame
 
 
 # Infer

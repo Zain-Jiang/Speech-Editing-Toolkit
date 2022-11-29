@@ -7,7 +7,7 @@ from modules.speech_editing.spec_denoiser.spec_denoiser import GaussianDiffusion
 from modules.speech_editing.spec_denoiser.diffnet import DiffNet
 from tasks.speech_editing.speech_editing_base import SpeechEditingBaseTask
 from tasks.tts.vocoder_infer.base_vocoder import get_vocoder_cls, BaseVocoder
-from tasks.tts.dataset_utils import StutterSpeechDataset
+from tasks.speech_editing.dataset_utils import StutterSpeechDataset
 
 
 DIFF_DECODERS = {
@@ -69,8 +69,8 @@ class SpeechDenoiserTask(SpeechEditingBaseTask):
         energy = None
         spk_embed = sample.get('spk_embed') if not hparams['use_spk_id'] else sample.get('spk_ids')
         mel2ph = sample['mel2ph']
-        f0 = None
-        uv = None
+        f0 = sample['f0']
+        uv = sample['uv']
         time_mel_masks = sample['time_mel_masks'][:,:,None]
 
         outputs['losses'] = {}

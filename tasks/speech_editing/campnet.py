@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from modules.speech_editing.campnet.campnet import CampNet
-from tasks.tts.dataset_utils import StutterSpeechDataset
+from tasks.speech_editing.dataset_utils import StutterSpeechDataset
 from tasks.speech_editing.speech_editing_base import SpeechEditingBaseTask
 from torch import nn
 from utils.commons.hparams import hparams

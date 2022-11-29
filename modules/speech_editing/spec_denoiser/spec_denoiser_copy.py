@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from torch import nn
 from tqdm import tqdm
 
-from modules.speech_editing.spec_denoiser.fs import FastSpeech
+from modules.tts.fs import FastSpeech
 from modules.speech_editing.commons.mel_encoder import MelEncoder
 from utils.commons.hparams import hparams
 
@@ -152,13 +152,11 @@ class GaussianDiffusion(nn.Module):
         return out
 
     def forward(self, txt_tokens, time_mel_masks, mel2ph, spk_embed,
-                ref_mels, f0, uv, energy=None, 
-                infer=False, use_pred_mel2ph=False, use_pred_pitch=False):
+                ref_mels, f0, uv, energy=None, infer=False):
         b, *_, device = *txt_tokens.shape, txt_tokens.device
         ret = {}
         ret = self.fs(txt_tokens, time_mel_masks, mel2ph, spk_embed, f0, uv, energy,
-                       skip_decoder=True, infer=infer, 
-                       use_pred_mel2ph=use_pred_mel2ph, use_pred_pitch=use_pred_pitch)
+                       skip_decoder=True, infer=infer)
         decoder_inp = ret['decoder_inp']
         tgt_nonpadding = (mel2ph > 0).float()[:, :, None]
         decoder_inp += self.mel_encoder(ref_mels*(1-time_mel_masks)) * tgt_nonpadding

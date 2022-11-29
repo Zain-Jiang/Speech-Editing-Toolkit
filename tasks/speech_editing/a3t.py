@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from modules.speech_editing.a3t.a3t import A3T
-from tasks.tts.dataset_utils import StutterSpeechDataset
+from tasks.speech_editing.dataset_utils import StutterSpeechDataset
 from tasks.speech_editing.speech_editing_base import SpeechEditingBaseTask
 from torch import nn
 from utils.audio.align import mel2token_to_dur
@@ -85,7 +85,7 @@ class A3TTask(SpeechEditingBaseTask):
                 stutter_mel_masks=stutter_mel_masks,
                 time_mel_masks=time_mel_masks,
             )
-            output['mel_out'] = output['mel_out'] * time_mel_masks + sample['mels'] * (1-time_mel_masks)
+            output['mel_out'] = output['mel_out_postnet'] * time_mel_masks + sample['mels'] * (1-time_mel_masks)
             return output
 
     def validation_step(self, sample, batch_idx):
