@@ -24,7 +24,7 @@ nbs
 #/usr/*
 #!/usr/.gitkeep
 scripts_usr
-/.history
+.history
 
 # Created by .ignore support plugin (hsz.mobi)
 ### Python template
