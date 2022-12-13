@@ -17,11 +17,6 @@ class A3T(FastSpeech):
         self.encoder = ConformerEncoder(
             ph_dict_size, self.hidden_size, num_layers=4, kernel_size=9)
         # build linguistic encoder
-        if hparams['num_spk'] > 1:
-            if self.hparams['use_spk_embed']:
-                self.spk_embed_proj = nn.Linear(256, self.hidden_size)
-            elif self.hparams['use_spk_id']:
-                self.spk_embed_proj = Embedding(hparams['num_spk'], self.hidden_size)
         predictor_hidden = hparams['predictor_hidden'] if hparams['predictor_hidden'] > 0 else self.hidden_size
         self.dur_predictor = DurationPredictor(
             self.hidden_size,
@@ -38,7 +33,6 @@ class A3T(FastSpeech):
         self.mel_out_postnet = Linear(self.hidden_size, self.out_dims, bias=True)
         self.mask_emb = torch.nn.Parameter(torch.zeros(1, 1, 80), requires_grad=True)
         del self.decoder
-        del self.spk_embed_proj
         del self.dur_predictor
         del self.length_regulator
 

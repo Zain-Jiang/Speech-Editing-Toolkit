@@ -8,7 +8,7 @@ import torch.distributions
 from utils.audio.pitch.utils import norm_interp_f0, denorm_f0
 from utils.commons.dataset_utils import BaseDataset, collate_1d_or_2d
 from utils.commons.indexed_datasets import IndexedDataset
-from utils.spec_aug.time_mask import generate_time_mask, generate_alignment_aware_time_mask
+from utils.spec_aug.time_mask import generate_time_mask, generate_alignment_aware_time_mask, generate_inference_mask
 
 
 class BaseSpeechDataset(BaseDataset):
@@ -95,93 +95,6 @@ class BaseSpeechDataset(BaseDataset):
         return batch
 
 
-class FastSpeechDataset(BaseSpeechDataset):
-    def __getitem__(self, index):
-        sample = super(FastSpeechDataset, self).__getitem__(index)
-        item = self._get_item(index)
-        hparams = self.hparams
-        mel = sample['mel']
-        T = mel.shape[0]
-        ph_token = sample['txt_token']
-        sample['mel2ph'] = mel2ph = torch.LongTensor(item['mel2ph'])[:T]
-        if hparams['use_pitch_embed']:
-            assert 'f0' in item
-            pitch = torch.LongTensor(item.get(hparams.get('pitch_key', 'pitch')))[:T]
-            f0, uv = norm_interp_f0(item["f0"][:T])
-            uv = torch.FloatTensor(uv)
-            f0 = torch.FloatTensor(f0)
-            if hparams['pitch_type'] == 'ph':
-                if "f0_ph" in item:
-                    f0 = torch.FloatTensor(item['f0_ph'])
-                else:
-                    f0 = denorm_f0(f0, None)
-                f0_phlevel_sum = torch.zeros_like(ph_token).float().scatter_add(0, mel2ph - 1, f0)
-                f0_phlevel_num = torch.zeros_like(ph_token).float().scatter_add(
-                    0, mel2ph - 1, torch.ones_like(f0)).clamp_min(1)
-                f0_ph = f0_phlevel_sum / f0_phlevel_num
-                f0, uv = norm_interp_f0(f0_ph)
-        else:
-            f0, uv, pitch = None, None, None
-        sample["f0"], sample["uv"], sample["pitch"] = f0, uv, pitch
-        return sample
-
-    def collater(self, samples):
-        if len(samples) == 0:
-            return {}
-        batch = super(FastSpeechDataset, self).collater(samples)
-        hparams = self.hparams
-        if hparams['use_pitch_embed']:
-            f0 = collate_1d_or_2d([s['f0'] for s in samples], 0.0)
-            pitch = collate_1d_or_2d([s['pitch'] for s in samples])
-            uv = collate_1d_or_2d([s['uv'] for s in samples])
-        else:
-            f0, uv, pitch = None, None, None
-        mel2ph = collate_1d_or_2d([s['mel2ph'] for s in samples], 0.0)
-        batch.update({
-            'mel2ph': mel2ph,
-            'pitch': pitch,
-            'f0': f0,
-            'uv': uv,
-        })
-        return batch
-
-
-class FastSpeechWordDataset(FastSpeechDataset):
-    def __getitem__(self, index):
-        sample = super().__getitem__(index)
-        item = self._get_item(index)
-        max_frames = sample['mel'].shape[0]
-        if 'word' in item:
-            sample['words'] = item['word']
-            sample["ph_words"] = item["ph_gb_word"]
-            sample["word_tokens"] = torch.LongTensor(item["word_token"])
-        else:
-            sample['words'] = item['words']
-            sample["ph_words"] = " ".join(item["ph_words"])
-            sample["word_tokens"] = torch.LongTensor(item["word_tokens"])
-        sample["mel2word"] = torch.LongTensor(item.get("mel2word"))[:max_frames]
-        sample["ph2word"] = torch.LongTensor(item['ph2word'][:self.hparams['max_input_tokens']])
-        return sample
-
-    def collater(self, samples):
-        batch = super().collater(samples)
-        ph_words = [s['ph_words'] for s in samples]
-        batch['ph_words'] = ph_words
-        word_tokens = collate_1d_or_2d([s['word_tokens'] for s in samples], 0)
-        batch['word_tokens'] = word_tokens
-        mel2word = collate_1d_or_2d([s['mel2word'] for s in samples], 0)
-        batch['mel2word'] = mel2word
-        ph2word = collate_1d_or_2d([s['ph2word'] for s in samples], 0)
-        batch['ph2word'] = ph2word
-        batch['words'] = [s['words'] for s in samples]
-        batch['word_lengths'] = torch.LongTensor([len(s['word_tokens']) for s in samples])
-        if self.hparams['use_word_input']:
-            batch['txt_tokens'] = batch['word_tokens']
-            batch['txt_lengths'] = torch.LongTensor([s['word_tokens'].numel() for s in samples])
-            batch['mel2ph'] = batch['mel2word']
-        return batch
-
-
 class StutterSpeechDataset(BaseSpeechDataset):
     def __getitem__(self, index):
         sample = super(StutterSpeechDataset, self).__getitem__(index)
@@ -214,15 +127,21 @@ class StutterSpeechDataset(BaseSpeechDataset):
         sample["f0"], sample["uv"], sample["pitch"] = f0, uv, pitch
 
         # Load stutter mask & generate time mask for speech editing
-        # sample['stutter_mel_mask'] = torch.LongTensor(item['stutter_mel_mask'][:max_frames])
+        if 'stutter_mel_mask' in item:
+            sample['stutter_mel_mask'] = torch.LongTensor(item['stutter_mel_mask'][:max_frames])
         if self.hparams['infer'] == False:
             mask_ratio = self.hparams['training_mask_ratio']
         else:
             mask_ratio = self.hparams['infer_mask_ratio']
-        if self.hparams.get('mask_type') == 'random':
-            time_mel_mask = generate_time_mask(torch.zeros_like(sample['mel']), ratio=mask_ratio)
-        elif self.hparams.get('mask_type') == 'alignment_aware':
-            time_mel_mask = generate_alignment_aware_time_mask(torch.zeros_like(sample['mel']), sample['mel2ph'], ratio=mask_ratio)
+        
+        if self.hparams['infer'] == False:
+            if self.hparams.get('mask_type') == 'random':
+                time_mel_mask = generate_time_mask(torch.zeros_like(sample['mel']), ratio=mask_ratio)
+            elif self.hparams.get('mask_type') == 'alignment_aware':
+                time_mel_mask = generate_alignment_aware_time_mask(torch.zeros_like(sample['mel']), sample['mel2ph'], ratio=mask_ratio)
+        else:
+            # In inference stage we randomly mask the 30% phoneme spans
+            time_mel_mask = generate_inference_mask(torch.zeros_like(sample['mel']), sample['mel2ph'], ratio=0.5)
         sample['time_mel_mask'] = time_mel_mask
         return sample
 
@@ -245,8 +164,7 @@ class StutterSpeechDataset(BaseSpeechDataset):
             'f0': f0,
             'uv': uv,
         })
-        # stutter_mel_masks = collate_1d_or_2d([s['stutter_mel_mask'] for s in samples], 0)
-        # batch['stutter_mel_masks'] = stutter_mel_masks
-        time_mel_masks = collate_1d_or_2d([s['time_mel_mask'] for s in samples], 0)
-        batch['time_mel_masks'] = time_mel_masks
+        if 'stutter_mel_mask' in samples[0]:
+            batch['stutter_mel_masks'] = collate_1d_or_2d([s['stutter_mel_mask'] for s in samples], self.hparams.get('stutter_pad_idx', -1))
+        batch['time_mel_masks'] = collate_1d_or_2d([s['time_mel_mask'] for s in samples], 0)
         return batch

@@ -12,7 +12,7 @@ check_val_every_n_epoch: 10
 clip_grad_norm: 1
 clip_grad_value: 0
 debug: false
-ds_name: stutter_speech
+ds_name: vctk
 ds_workers: 2
 endless_ds: true
 eval_max_batches: -1
@@ -47,7 +47,7 @@ scheduler: warmup
 seed: 1234
 sigmoid_scale: false
 sort_by_len: true
-task_cls: tasks.speech_editing.a3t.A3TTask
+task_cls: tasks.speech_editing.spec_denoiser_trans.SpeechDenoiserTransTask
 tb_log_interval: 100
 test_input_yaml: ''
 test_num: 100
@@ -63,12 +63,30 @@ valid_set_name: valid
 warmup_updates: 8000
 weight_decay: 0
 word_dict_size: 40500
+mask_ratio: 0.12
 
 
 # Mask
 mask_type: 'alignment_aware'
 training_mask_ratio: 0.80
 infer_mask_ratio: 0.30
+
+
+# diffusion model
+diff_decoder_type: 'wavenet'
+latent_cond_type: 'add'
+dilation_cycle_length: 1
+residual_layers: 20
+residual_channels: 256
+keep_bins: 80
+spec_min: [ ]
+spec_max: [ ]
+diff_loss_type: l1
+max_beta: 0.06
+# diffusion
+timesteps: 8
+timescale: 1
+schedule_type: 'vpsde'
 
 
 # Modules
@@ -117,7 +135,7 @@ enc_prenet: true
 encoder_K: 8
 encoder_type: conv
 ffn_act: gelu
-ffn_hidden_size: 1024
+ffn_hidden_size: 768
 fft_size: 1024
 fvae_dec_n_layers: 4
 fvae_decoder_type: conv
@@ -127,11 +145,12 @@ fvae_encoder_type: conv
 fvae_kernel_size: 5
 fvae_noise_scale: 1.0
 fvae_strides: 4
-hidden_size: 256
+hidden_size: 192
 hop_size: 256
 latent_size: 16
 layers_in_block: 2
 num_heads: 2
+mel_disc_hidden_size: 128
 predictor_dropout: 0.2
 predictor_grad: 0.1
 predictor_hidden: -1
@@ -148,11 +167,11 @@ use_fvae: false
 use_gt_dur: false
 use_gt_f0: false
 use_latent_cond: false
-use_pitch_embed: false
+use_pitch_embed: true
 use_pos_embed: true
 use_post_flow: true
 use_prior_flow: true
-use_spk_embed: false
+use_spk_embed: true
 use_spk_id: false
 use_txt_cond: true
 use_uv: true
@@ -168,7 +187,7 @@ f0_max: 600
 f0_min: 80
 fmax: 7600
 fmin: 55
-frames_multiple: 4
+frames_multiple: 1
 loud_norm: false
 mel_vmax: 1.5
 mel_vmin: -6
@@ -176,6 +195,7 @@ min_frames: 0
 noise_scale: 0.8
 win_size: 1024
 pitch_extractor: parselmouth
+pitch_type: frame
 
 
 # Infer
@@ -185,6 +205,7 @@ infer_post_glow: true
 out_wav_norm: false
 test_ids: [ ]
 eval_mcd: False
+
 
 # Loss lambda
 kl_min: 0.0

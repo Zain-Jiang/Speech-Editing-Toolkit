@@ -27,8 +27,8 @@ class BinarizationError(Exception):
 
 
 class BaseBinarizer:
-    def __init__(self, processed_data_dir='data/processed/libritts', binary_data_dir='data/binary/libritts'):
-        self.dataset_name = 'libritts'
+    def __init__(self, processed_data_dir='data/processed/stutter_set', binary_data_dir='data/binary/stutter_set'):
+        self.dataset_name = 'stutter_set'
         self.processed_data_dir = processed_data_dir
         self.binary_data_dir = binary_data_dir
         self.items = {}
@@ -45,7 +45,7 @@ class BaseBinarizer:
                                 'mfa_min_sil_duration': 0.1, 'trim_eos_bos': False,
                                 'with_align': True, 'text2mel_params': False,
                                 'dataset_name': self.dataset_name,
-                                'with_f0': True}
+                                'with_f0': True, 'min_mel_length': 64}
 
     def load_meta_data(self):
         processed_data_dir = self.processed_data_dir
@@ -142,8 +142,12 @@ class BaseBinarizer:
         item_name = item['item_name']
         wav_fn = item['wav_fn']
         wav, mel = cls.process_audio(wav_fn, item, text2mel_params)
-        # cls.process_stutter_label(wav, mel, item, text2mel_params)
+        if len(mel) < text2mel_params['min_mel_length']:
+            return None
         try:
+            # stutter label
+            cls.process_stutter_label(wav, mel, item, text2mel_params)
+            # alignments
             n_bos_frames, n_eos_frames = 0, 0
             if text2mel_params['with_align']:
                 tg_fn = f"data/processed/{text2mel_params['dataset_name']}/mfa_outputs/{item_name}.TextGrid"
@@ -193,7 +197,7 @@ class BaseBinarizer:
     @classmethod
     def process_stutter_label(cls, wav, mel, res, text2mel_params):
         # obtain the stutter-oriented mel mask from stutter_label
-        stutter_fn = f"data/processed/stutter_labels/{res['item_name'][:17]}/{res['item_name']}.npy"
+        stutter_fn = f"data/processed/stutter_set/stutter_labels/{res['item_name'][:17]}/{res['item_name']}.npy"
         stutter_label = np.load(stutter_fn)
         stutter_mel_mask = np.zeros(mel.shape[0])
         if len(stutter_label) > 0:
@@ -201,6 +205,8 @@ class BaseBinarizer:
                 stutter_start_time, stutter_end_time = item[0], item[1]
                 stutter_start_frame = int(stutter_start_time * text2mel_params['audio_sample_rate'] // text2mel_params['hop_size'])
                 stutter_end_frame = int(stutter_end_time * text2mel_params['audio_sample_rate'] // text2mel_params['hop_size'])
+                if item[2] != 0:
+                    item[2] = 1
                 stutter_mel_mask[stutter_start_frame:stutter_end_frame] = item[2]
         res.update({'stutter_mel_mask': stutter_mel_mask})
 

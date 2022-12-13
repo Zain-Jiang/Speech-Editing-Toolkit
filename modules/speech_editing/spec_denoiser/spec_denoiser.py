@@ -19,7 +19,7 @@ class GaussianDiffusion(nn.Module):
         super().__init__()
         self.denoise_fn = denoise_fn
         self.fs = FastSpeech(len(phone_encoder), hparams)
-        self.mel_encoder = MelEncoder()
+        self.mel_encoder = MelEncoder(hidden_size=self.fs.hidden_size)
         # self.fs2.decoder = None
         self.mel_bins = out_dims
 

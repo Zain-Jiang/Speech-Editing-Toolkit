@@ -100,7 +100,7 @@ def get_penalty(former_length_1: int, former_length_2: int, length_after_equalin
   penalty = 2 - (former_length_1 + former_length_2) / length_after_equaling
   return penalty
 
-def get_metrics_mels(mel_1: np.ndarray, mel_2: np.ndarray, *, n_mfcc: int = 16, take_log: bool = False, use_dtw: bool = True) -> Tuple[MelCepstralDistance, Penalty, Frames]:
+def get_metrics_mels(mel_1: np.ndarray, mel_2: np.ndarray, *, n_mfcc: int = 39, take_log: bool = False, use_dtw: bool = False) -> Tuple[MelCepstralDistance, Penalty, Frames]:
   """Compute the mel-cepstral distance between two audios, a penalty term accounting for the number of frames that has to
   be added to equal both frame numbers or to align the mel-cepstral coefficients if using Dynamic Time Warping and the
   final number of frames that are used to compute the mel-cepstral distance.

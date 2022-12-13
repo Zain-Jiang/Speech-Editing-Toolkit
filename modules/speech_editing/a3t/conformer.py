@@ -7,8 +7,8 @@ from modules.commons.layers import Embedding
 from modules.speech_editing.commons.transformer import SinusoidalPositionalEmbedding, MultiheadAttention
 from modules.speech_editing.commons.mel_encoder import MelEncoder
 
-DEFAULT_MAX_SOURCE_POSITIONS = 2000
-DEFAULT_MAX_TARGET_POSITIONS = 2000
+DEFAULT_MAX_SOURCE_POSITIONS = 4000
+DEFAULT_MAX_TARGET_POSITIONS = 4000
 
 
 class ConformerLayers(nn.Module):
@@ -64,7 +64,7 @@ class ConformerEncoder(ConformerLayers):
         self.pos_embed = SinusoidalPositionalEmbedding(
             hidden_size, self.padding_idx, init_size=DEFAULT_MAX_TARGET_POSITIONS,
         )
-        self.seg_embed = Embedding(500, hidden_size, padding_idx=0)
+        self.seg_embed = Embedding(2000, hidden_size, padding_idx=0)
         self.dropout = 0.1
 
     def forward(self, txt_tokens, txt_nonpadding, mels, mel2ph, time_mel_masks):

@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-CORPUS=${NUM_JOB:-libritts}
+CORPUS=${NUM_JOB:-stutter_set}
 NUM_JOB=${NUM_JOB:-36}
 echo "| Training MFA using ${NUM_JOB} cores."
 BASE_DIR=data/processed/$CORPUS

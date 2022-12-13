@@ -74,7 +74,7 @@ class FastSpeech(nn.Module):
             self.pitch_embed = Embedding(300, self.hidden_size, 0)
             self.pitch_predictor = PitchPredictor(
                 self.hidden_size, n_chans=predictor_hidden,
-                n_layers=5, dropout_rate=0.1, odim=2,
+                n_layers=5, dropout_rate=0.2, odim=2,
                 kernel_size=hparams['predictor_kernel'])
         if hparams['dec_inp_add_noise']:
             self.z_channels = hparams['z_channels']

@@ -1,5 +1,5 @@
-beam: 10
-retry_beam: 40
+beam: 30
+retry_beam: 120
 
 features:
   type: "mfcc"

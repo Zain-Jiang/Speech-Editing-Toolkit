@@ -65,7 +65,7 @@ class StutterSpeechInfer(BaseTTSInfer):
         uv = sample['uv']
         edited_word_idx = 14
         # changed_idx = [13,24]
-        changed_idx = [13,19]
+        changed_idx = [13,23]
 
         ret = {}
         encoder_out = self.model.fs.encoder(edited_txt_tokens)  # [B, T, C]
@@ -244,7 +244,7 @@ class StutterSpeechInfer(BaseTTSInfer):
         inp = {
             'text': 'And several new measures to protect American security and prosperity.',
             # 'edited_text': 'And several new measures to protect China China China Let\'s Say China security and prosperity.',
-            'edited_text': 'And several new measures to protect American and Russian security and prosperity.',
+            'edited_text': 'And several new measures to protect Peter in the family guy security and prosperity.',
             'item_name': 'trump',
             # 'text': 'This is a LibriVox recording.',
             # 'edited_text': 'This is a god damn online course recording.',

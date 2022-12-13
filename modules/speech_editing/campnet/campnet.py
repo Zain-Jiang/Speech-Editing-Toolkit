@@ -22,7 +22,7 @@ class CampNet(FastSpeech):
                 self.spk_embed_proj = nn.Linear(256, self.hidden_size)
             elif self.hparams['use_spk_id']:
                 self.spk_embed_proj = Embedding(hparams['num_spk'], self.hidden_size)
-        self.mel_encoder = MelEncoder()
+        self.mel_encoder = MelEncoder(hidden_size=self.hidden_size)
         self.decoder_coarse = TransformerDecoder(
             self.hidden_size, num_layers=6, 
             ffn_kernel_size=hparams['dec_ffn_kernel_size'], num_heads=2)

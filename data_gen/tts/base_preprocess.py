@@ -18,9 +18,10 @@ from utils.text.text_encoder import is_sil_phoneme, build_token_encoder
 class BasePreprocessor:
     def __init__(self):
         self.txt_processor = TxtProcessor()
-        self.dataset_name = 'libritts'
+        self.dataset_name = 'stutter_set'
         # self.raw_data_dir = f'data/raw/{self.dataset_name}'
-        self.raw_data_dir = f'/home/jzy/SyntaSpeech/data/raw/LibriTTS'
+        # self.raw_data_dir = f'/home/jzy/SyntaSpeech/data/raw/LibriTTS'
+        self.raw_data_dir = f'data/raw/stutter_set'
         self.processed_dir = f'data/processed/{self.dataset_name}'
         self.spk_map_fn = f"{self.processed_dir}/spk_map.json"
         self.reset_phone_dict = True

@@ -28,17 +28,7 @@ class TransitionNetTask(SpeechEditingBaseTask):
     def build_tts_model(self):
         self.model = SingleWindowDisc(time_length=64)
 
-
-    def run_model(self, sample, infer=False, batch_size=200, clip_length_range=50, *args, **kwargs):
-        txt_tokens = sample['txt_tokens']  # [B, T_t]
-        target = sample['mels']  # [B, T_s, 80]
-        mel2ph = sample['mel2ph']
-        f0 = sample['f0']
-        uv = sample['uv']
-        energy = None
-        time_mel_masks = sample['time_mel_masks'][:,:,None]
-        spk_embed = sample.get('spk_embed') if not hparams['use_spk_id'] else sample.get('spk_ids')
-
+    def run_model(self, sample, infer=False, batch_size=256, clip_length_range=50, *args, **kwargs):
         mel = sample['mels']
         mel_len = sample['mel_lengths']
         mel_list, label_list = [], []

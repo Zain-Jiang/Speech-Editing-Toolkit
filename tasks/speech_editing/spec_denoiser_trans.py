@@ -2,10 +2,12 @@ import torch
 
 import utils
 from utils.commons.hparams import hparams
+from utils.commons.ckpt_utils import load_ckpt
 from utils.audio.pitch.utils import denorm_f0
 from modules.speech_editing.spec_denoiser.spec_denoiser import GaussianDiffusion
 from modules.speech_editing.spec_denoiser.diffnet import DiffNet
 from tasks.speech_editing.speech_editing_base import SpeechEditingBaseTask
+from tasks.speech_editing.transition_net import TransitionNetTask
 from tasks.tts.vocoder_infer.base_vocoder import get_vocoder_cls, BaseVocoder
 from tasks.speech_editing.dataset_utils import StutterSpeechDataset
 
@@ -15,11 +17,21 @@ DIFF_DECODERS = {
 }
 
 
-class SpeechDenoiserTask(SpeechEditingBaseTask):
+class SpeechDenoiserTransTask(SpeechEditingBaseTask):
     def __init__(self):
-        super(SpeechDenoiserTask, self).__init__()
+        super(SpeechDenoiserTransTask, self).__init__()
         self.dataset_cls = StutterSpeechDataset
+        self.build_transition_net_task()
         self.vocoder: BaseVocoder = get_vocoder_cls(hparams['vocoder'])()
+    
+    def build_transition_net_task(self):
+        self.transition_net_task = TransitionNetTask()
+        self.transition_net_task.build_model()
+        transition_net_work_dir = hparams.get("transition_net_work_dir", "checkpoints/transition_net_vctk_batch128")
+        load_ckpt(self.transition_net_task.model, transition_net_work_dir, 'model')
+        for p in self.transition_net_task.parameters():
+            p.requires_grad = False
+        self.transition_net_task.eval()
 
     def build_model(self):
         self.build_tts_model()
@@ -54,12 +66,25 @@ class SpeechDenoiserTask(SpeechEditingBaseTask):
         self.add_dur_loss(output['dur'], mel2ph, txt_tokens, losses=losses)
         if hparams['use_pitch_embed']:
             self.add_pitch_loss(output, sample, losses)
+
+        transition_net_sample = {'mels': output['mel_out'], 'mel_lengths': sample['mel_lengths']}
+        trans_out = self.transition_net_task.run_model(transition_net_sample, infer=True)
+        losses['bce'] = trans_out['bce'] * 0.01
         # if hparams['use_energy_embed']:
         #     self.add_energy_loss(output['energy_pred'], energy, losses)
         if not infer:
             return losses, output
         else:
             return output
+    
+    def _training_step(self, sample, batch_idx, optimizer_idx):
+        loss_output, _ = self.run_model(sample)
+        loss_weights = {
+            'bce': 0.01,
+        }
+        total_loss = sum([loss_weights.get(k, 1) * v for k, v in loss_output.items() if isinstance(v, torch.Tensor) and v.requires_grad])
+        loss_output['batch_size'] = sample['txt_tokens'].size()[0]
+        return total_loss, loss_output
 
     def validation_step(self, sample, batch_idx):
         outputs = {}

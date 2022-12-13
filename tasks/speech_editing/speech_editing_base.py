@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import torch.optim
 import torch.utils.data
 
-from tasks.speech_editing.dataset_utils import FastSpeechWordDataset
+from tasks.speech_editing.dataset_utils import StutterSpeechDataset
 from tasks.tts.speech_base import SpeechBaseTask
 from utils.audio.align import mel2token_to_dur
 from utils.audio.pitch.utils import denorm_f0
@@ -16,7 +16,7 @@ from utils.eval.mcd import get_metrics_mels
 class SpeechEditingBaseTask(SpeechBaseTask):
     def __init__(self):
         super().__init__()
-        self.dataset_cls = FastSpeechWordDataset
+        self.dataset_cls = StutterSpeechDataset
         self.sil_ph = self.token_encoder.sil_phonemes()
 
         self.mcd_dict = {'mcd_total': 0, 'num': 0}
@@ -168,15 +168,26 @@ class SpeechEditingBaseTask(SpeechBaseTask):
         wav_pred = self.vocoder.spec2wav(mel_pred)
         self.saving_result_pool.add_job(self.save_result, args=[
             wav_pred, mel_pred, base_fn % 'P', gen_dir, str_phs, mel2ph_pred])
+        mel_pred_seg = mel_pred[time_mel_masks==1]
+        wav_pred_seg =self.vocoder.spec2wav(mel_pred_seg)
+        self.saving_result_pool.add_job(self.save_result, args=[
+            wav_pred_seg, mel_pred_seg, base_fn % 'P_SEG', gen_dir, None, None])
         if hparams['save_gt']:
             wav_gt = self.vocoder.spec2wav(mel_gt)
             self.saving_result_pool.add_job(self.save_result, args=[
                 wav_gt, mel_gt, base_fn % 'G', gen_dir, str_phs, mel2ph])
+            mel_gt_seg = mel_gt[time_mel_masks==1]
+            wav_gt_seg =self.vocoder.spec2wav(mel_gt_seg)
+            self.saving_result_pool.add_job(self.save_result, args=[
+                wav_gt_seg, mel_gt_seg, base_fn % 'G_SEG', gen_dir, None, None])
         
-        # Calculate MCD scores (Log Db level)
-        mcd, _, _ = get_metrics_mels(mel_pred.T, mel_gt.T)
-        self.mcd_dict['mcd_total'] += mcd
-        self.mcd_dict['num'] += 1
+        # Calculate MCD scores (the spectrogram should be logged before calculation)
+        # mcd, _, _ = get_metrics_mels(mel_pred.T, mel_gt.T)
+        # self.mcd_dict['mcd_total'] += mcd
+        # self.mcd_dict['num'] += 1
+        
+        # Calculate STOI scores
+        
         
         # print(f"Pred_shape: {mel_pred.shape}, gt_shape: {mel_gt.shape}")
         return {
@@ -191,5 +202,5 @@ class SpeechEditingBaseTask(SpeechBaseTask):
     def test_end(self, outputs):
         super().test_end(outputs)
         #  MCD score
-        MCD_value = float(self.mcd_dict['mcd_total']) / float(self.mcd_dict['num'])
-        print("MCD = : {:f}".format(MCD_value))
+        # MCD_value = float(self.mcd_dict['mcd_total']) / float(self.mcd_dict['num'])
+        # print("MCD = : {:f}".format(MCD_value))
