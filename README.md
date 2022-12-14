@@ -37,7 +37,8 @@ export PYTHONPATH=.
 pip install -U pip
 pip install -r requirements.txt
 sudo apt install -y sox libsox-fmt-mp3
-bash mfa_usr/install_mfa.sh # install forced alignment tool
+# install Montreal Forced Aligner following 
+# https://montreal-forced-aligner.readthedocs.io/en/latest/
 ```
 
 ## Download the pre-trained vocoder
