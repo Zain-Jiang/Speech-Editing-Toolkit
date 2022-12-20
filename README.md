@@ -28,6 +28,7 @@ Our framework supports the following datasets:
 
 - VCTK
 - LibriTTS
+- StammerSpeech Dataset (We will publish later)
 
 ## Install Dependencies
 Please install the latest numpy, torch and tensorboard first.
@@ -58,13 +59,16 @@ python data_gen/tts/base_binarizer.py
 ## Train
 ```bash
 # example run
-CUDA_VISIBLE_DEVICES=2 python tasks/run.py --config egs/campnet_vctk.yaml --exp_name campnet_vctk
+CUDA_VISIBLE_DEVICES=2 python tasks/run.py --config egs/campnet_vctk.yaml --exp_name campnet_vctk --reset
 ```
 
 ## Inference
 ```bash
-# example run
-python inference/tts/campnet.py --config=/checkpoints/campnet_vctk/config.yaml --hparams='work_dir=checkpoints/campnet_vctk'
+# run with full inference
+CUDA_VISIBLE_DEVICES=2 python tasks/run.py --config egs/campnet_vctk.yaml --exp_name campnet_vctk --infer
+
+# run with one example
+python inference/tts/campnet.py --config=/checkpoints/campnet_vctk/config.yaml --exp_name campnet_vctk --hparams='work_dir=checkpoints/campnet_vctk'
 ```
 
 ## Citation

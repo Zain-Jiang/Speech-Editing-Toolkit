@@ -84,7 +84,7 @@ class ConformerEncoder(ConformerLayers):
         return x, encoder_padding_mask
 
     def forward_txt_embedding(self, txt_tokens, txt_nonpadding):
-        ph2ph = torch.arange(txt_tokens.shape[1])[None, :].to(txt_tokens.device)
+        ph2ph = torch.arange(txt_tokens.shape[1])[None, :].to(txt_tokens.device) + 1
         # text embedding
         txt_feat = self.embed_scale * self.txt_embed(txt_tokens)
         # positional embedding
@@ -103,7 +103,7 @@ class ConformerEncoder(ConformerLayers):
         mels_masked = mels * (1-time_mel_masks)
         mel_feat = self.mel_embed(mels_masked) * mel_nonpadding
         # positional embedding
-        mel_pos_emb = self.pos_embed(mels.sum(-1))
+        mel_pos_emb = self.pos_embed(mels[..., 0])
         mel_feat = mel_feat + mel_pos_emb
         # segment embedding
         mel_seg_emb = self.seg_embed(mel2ph)

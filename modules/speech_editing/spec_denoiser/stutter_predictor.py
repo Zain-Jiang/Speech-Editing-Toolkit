@@ -17,13 +17,13 @@ class ConvMelPrenet(nn.Module):
         super(ConvMelPrenet, self).__init__()
         self.pre_net = nn.Sequential(
             nn.Conv1d(input_dim, hidden_size, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
+            nn.LeakyReLU(0.2, inplace=True),
             nn.Conv1d(hidden_size, hidden_size, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
+            nn.LeakyReLU(0.2, inplace=True),
             nn.Conv1d(hidden_size, hidden_size, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
+            nn.LeakyReLU(0.2, inplace=True),
             nn.Conv1d(hidden_size, hidden_size, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
+            nn.LeakyReLU(0.2, inplace=True),
         )
         # Linear function (out)
         self.fc_out = nn.Linear(hidden_size, hidden_size)  
@@ -61,8 +61,10 @@ class StutterPredictor(FastSpeech):
         # self.decoder = ConvBlocks(
         #     self.hidden_size, self.hidden_size,
         #     [1] * 5, kernel_size=5, layers_in_block=2)
-        self.decoder = WN(self.hidden_size, 5, 1, n_layers=4, c_cond=self.hidden_size, p_dropout=0,is_BTC=True)
+        self.decoder = WN(self.hidden_size, 5, 1, n_layers=4, c_cond=self.hidden_size, p_dropout=0.3,is_BTC=True)
         self.mel_out = Linear(self.hidden_size, 3, bias=False)
+        self.text_drop = nn.Dropout(p=0.3)
+        self.mel_drop = nn.Dropout(p=0.3)
         del self.encoder
         del self.pitch_embed
         del self.pitch_predictor
@@ -75,6 +77,7 @@ class StutterPredictor(FastSpeech):
         ret = {}
         txt_embed, txt_nonpadding = self.run_text_encoder(txt_tokens)
         mel_embed, mel_nonpadding = self.run_mel_encoder(mels, mel2ph)
+        txt_embed, mel_embed = self.text_drop(txt_embed), self.mel_drop(mel_embed)
         decoder_out, enc_dec_attn = self.run_decoder(mel_embed, txt_embed, mel2ph, mel_nonpadding, ret)
         ret['logits'] = decoder_out
         ret['attn'] = enc_dec_attn

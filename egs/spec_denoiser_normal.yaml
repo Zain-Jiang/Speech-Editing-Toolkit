@@ -5,9 +5,9 @@ amp: false
 audio_num_mel_bins: 80
 audio_sample_rate: 22050
 binarizer_cls: data_gen.tts.base_binarizer.BaseBinarizer
-raw_data_dir: data/raw/stutter_set
-processed_data_dir: data/processed/stutter_set
-binary_data_dir: data/binary/stutter_set
+raw_data_dir: data/raw/vctk
+processed_data_dir: data/processed/vctk
+binary_data_dir: data/binary/vctk
 check_val_every_n_epoch: 10
 clip_grad_norm: 1
 clip_grad_value: 0
@@ -23,7 +23,7 @@ max_frames: 1548
 max_input_tokens: 1550
 max_sentences: 16
 max_tokens: 40000
-max_updates: 12000
+max_updates: 2000000
 max_valid_sentences: 1
 max_valid_tokens: 60000
 num_ckpt_keep: 3
@@ -47,7 +47,7 @@ scheduler: warmup
 seed: 1234
 sigmoid_scale: false
 sort_by_len: true
-task_cls: tasks.speech_editing.stutter_predictor.StutterPredictorTask
+task_cls: tasks.speech_editing.spec_denoiser_normal.SpeechDenoiserNormalTask
 tb_log_interval: 100
 test_input_yaml: ''
 test_num: 100
@@ -73,7 +73,6 @@ infer_mask_ratio: 0.30
 
 
 # diffusion model
-hidden_size: 192
 diff_decoder_type: 'wavenet'
 latent_cond_type: 'add'
 dilation_cycle_length: 1
@@ -146,6 +145,7 @@ fvae_encoder_type: conv
 fvae_kernel_size: 5
 fvae_noise_scale: 1.0
 fvae_strides: 4
+hidden_size: 192
 hop_size: 256
 latent_size: 16
 layers_in_block: 2

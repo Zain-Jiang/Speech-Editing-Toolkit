@@ -19,7 +19,7 @@ class GaussianDiffusion(nn.Module):
         super().__init__()
         self.denoise_fn = denoise_fn
         self.fs = FastSpeech(len(phone_encoder), hparams)
-        self.mel_encoder = MelEncoder()
+        self.mel_encoder = MelEncoder(hidden_size=self.fs.hidden_size)
         # self.fs2.decoder = None
         self.mel_bins = out_dims
 
@@ -155,7 +155,7 @@ class GaussianDiffusion(nn.Module):
                 ref_mels, f0, uv, energy=None, infer=False):
         b, *_, device = *txt_tokens.shape, txt_tokens.device
         ret = {}
-        ret = self.fs(txt_tokens, time_mel_masks, mel2ph, spk_embed, f0, uv, energy,
+        ret = self.fs(txt_tokens, mel2ph, spk_embed, f0, uv, energy,
                        skip_decoder=True, infer=infer)
         decoder_inp = ret['decoder_inp']
         tgt_nonpadding = (mel2ph > 0).float()[:, :, None]
