@@ -4,9 +4,9 @@ import torch.nn.functional as F
 from torch import nn
 from torch.nn import Linear
 
+from modules.commons.conv import ConvBlocks
 from modules.commons.layers import Embedding
 from modules.speech_editing.a3t.conformer import ConformerEncoder, ConformerDecoder
-from modules.speech_editing.a3t.a3t_postnet import Postnet
 from modules.tts.fs import FastSpeech
 from modules.commons.nar_tts_modules import DurationPredictor
 
@@ -26,8 +26,11 @@ class A3T(FastSpeech):
             kernel_size=hparams['dur_predictor_kernel'])
         self.a3t_decoder = ConformerDecoder(
             self.hidden_size, num_layers=4, kernel_size=31)
-        self.a3t_postnet = Postnet(idim=self.hidden_size, odim=hparams['audio_num_mel_bins'])
+        self.a3t_postnet = ConvBlocks(
+            self.hidden_size, self.hidden_size,
+            [1] * 5, kernel_size=5, layers_in_block=2)
         self.mel_out_decoder = Linear(self.hidden_size, self.out_dims, bias=True)
+        self.mel_out_postnet = Linear(self.hidden_size, self.out_dims, bias=True)
         self.mask_emb = torch.nn.Parameter(torch.zeros(1, 1, 80), requires_grad=True)
         del self.decoder
         del self.dur_predictor
@@ -59,6 +62,10 @@ class A3T(FastSpeech):
         decoder_out = self.a3t_decoder(encoder_out, encoder_padding_mask)[:,:mel_nonpadding.shape[1],:] * mel_nonpadding
         mel_out_decoder = self.mel_out_decoder(decoder_out) * mel_nonpadding
 
-        mel_out_postnet = self.a3t_postnet(mel_out_decoder) * mel_nonpadding
-        mel_out_postnet = mel_out_decoder + mel_out_postnet * time_mel_masks
+        mel_decoder = mels * (1-time_mel_masks) + mel_out_decoder * time_mel_masks
+        mel_input_postnet = self.encoder.mel_embed(mel_decoder) * mel_nonpadding
+        mel_out_postnet = self.a3t_postnet(x=mel_input_postnet)
+        mel_out_postnet = mel_out_postnet * mel_nonpadding
+        mel_out_postnet = self.mel_out_postnet(mel_out_postnet) * mel_nonpadding
+        mel_out_postnet = mel_decoder + mel_out_postnet * time_mel_masks
         return mel_out_decoder, mel_out_postnet

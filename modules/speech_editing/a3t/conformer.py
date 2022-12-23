@@ -12,7 +12,7 @@ DEFAULT_MAX_TARGET_POSITIONS = 4000
 
 
 class ConformerLayers(nn.Module):
-    def __init__(self, hidden_size, num_layers, kernel_size=9, dropout=0.0, attn_dropout=0.1, num_heads=4,
+    def __init__(self, hidden_size, num_layers, kernel_size=9, dropout=0.2, attn_dropout=0.2, num_heads=4,
                  use_last_norm=True, save_hidden=False):
         super().__init__()
         self.use_last_norm = use_last_norm
@@ -65,7 +65,7 @@ class ConformerEncoder(ConformerLayers):
             hidden_size, self.padding_idx, init_size=DEFAULT_MAX_TARGET_POSITIONS,
         )
         self.seg_embed = Embedding(2000, hidden_size, padding_idx=0)
-        self.dropout = 0.1
+        self.dropout = 0.2
 
     def forward(self, txt_tokens, txt_nonpadding, mels, mel2ph, time_mel_masks):
         """
