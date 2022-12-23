@@ -33,7 +33,7 @@ Our framework supports the following datasets:
 - StammerSpeech Dataset (We will publish it later)
 
 ## Install Dependencies
-Please install the latest numpy, torch and tensorboard first.
+Please install the latest numpy, torch and tensorboard first. Then run the following commands:
 ```bash
 export PYTHONPATH=.
 # install requirements.
@@ -41,7 +41,8 @@ pip install -U pip
 pip install -r requirements.txt
 sudo apt install -y sox libsox-fmt-mp3
 ```
-Then install Montreal Forced Aligner following the link below:
+Finally, install Montreal Forced Aligner following the link below:
+
 `https://montreal-forced-aligner.readthedocs.io/en/latest/`
 
 ## Download the pre-trained vocoder
