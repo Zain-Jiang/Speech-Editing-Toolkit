@@ -21,7 +21,7 @@ This repo contains unofficial PyTorch implementation of:
 [Demo page](https://hairuo55.github.io/CampNet)
 - [A3T: Alignment-Aware Acoustic and Text Pretraining for Speech Synthesis and Editing](https://proceedings.mlr.press/v162/bai22d/bai22d.pdf) (ICML 2022)  
 [Demo page](https://educated-toothpaste-462.notion.site/Demo-b0edd300e6004c508744c6259369a468) | [Official code](https://github.com/richardbaihe/a3t)
-- [Editspeech: A text based speech editing system using partial inference and bidirectional fusion](https://arxiv.org/pdf/2107.01554) (ASRU 2021)  
+- [EditSpeech: A text based speech editing system using partial inference and bidirectional fusion](https://arxiv.org/pdf/2107.01554) (ASRU 2021)  
 [Demo page](https://daxintan-cuhk.github.io/EditSpeech/) (Still Working)
 - Our implementation of a generator-based spectrogram denoise diffusion models for speech editing.
 
@@ -30,7 +30,7 @@ Our framework supports the following datasets:
 
 - VCTK
 - LibriTTS
-- StammerSpeech Dataset (We will publish later)
+- StammerSpeech Dataset (We will publish it later)
 
 ## Install Dependencies
 Please install the latest numpy, torch and tensorboard first.
@@ -40,9 +40,9 @@ export PYTHONPATH=.
 pip install -U pip
 pip install -r requirements.txt
 sudo apt install -y sox libsox-fmt-mp3
-# install Montreal Forced Aligner following 
-# https://montreal-forced-aligner.readthedocs.io/en/latest/
 ```
+Then install Montreal Forced Aligner following the link below:
+`https://montreal-forced-aligner.readthedocs.io/en/latest/`
 
 ## Download the pre-trained vocoder
 ```
