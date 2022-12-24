@@ -28,7 +28,6 @@ class A3T(FastSpeech):
             self.hidden_size, num_layers=4, kernel_size=31)
         self.a3t_postnet = Postnet(idim=self.hidden_size, odim=hparams['audio_num_mel_bins'])
         self.mel_out_decoder = Linear(self.hidden_size, self.out_dims, bias=True)
-        self.mask_emb = torch.nn.Parameter(torch.zeros(1, 1, 80), requires_grad=True)
         del self.decoder
         del self.dur_predictor
         del self.length_regulator
@@ -59,6 +58,8 @@ class A3T(FastSpeech):
         decoder_out = self.a3t_decoder(encoder_out, encoder_padding_mask)[:,:mel_nonpadding.shape[1],:] * mel_nonpadding
         mel_out_decoder = self.mel_out_decoder(decoder_out) * mel_nonpadding
 
-        mel_out_postnet = self.a3t_postnet(mel_out_decoder) * mel_nonpadding
-        mel_out_postnet = mel_out_decoder + mel_out_postnet * time_mel_masks
+        mel_decoder = mels * (1-time_mel_masks) + mel_out_decoder * time_mel_masks
+        mel_input_postnet = self.encoder.mel_embed(mel_decoder) * mel_nonpadding
+        mel_out_postnet = self.a3t_postnet(mel_input_postnet) * mel_nonpadding
+        mel_out_postnet = mel_decoder + mel_out_postnet * time_mel_masks
         return mel_out_decoder, mel_out_postnet

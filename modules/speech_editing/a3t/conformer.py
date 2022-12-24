@@ -66,6 +66,7 @@ class ConformerEncoder(ConformerLayers):
         )
         self.seg_embed = Embedding(2000, hidden_size, padding_idx=0)
         self.dropout = 0.2
+        self.embed_scale = math.sqrt(hidden_size)
 
     def forward(self, txt_tokens, txt_nonpadding, mels, mel2ph, time_mel_masks):
         """

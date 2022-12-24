@@ -40,13 +40,21 @@ class EditTTSTask(SpeechEditingBaseTask):
                        ref_mels=target, f0=f0, uv=uv, energy=energy, infer=infer)
 
         losses = {}
-        self.add_mel_loss(output['mel_out']*time_mel_masks, target*time_mel_masks, losses, postfix="_coarse")
-        output['mel_out'] = output['mel_out']*time_mel_masks + target*(1-time_mel_masks)
+        forward_outputs = output['forward_outputs']
+        backward_outputs = output['backward_outputs']
+        self.add_mel_loss(forward_outputs*time_mel_masks, target*time_mel_masks, losses, postfix="_forward")
+        self.add_mel_loss(backward_outputs*time_mel_masks, target*time_mel_masks, losses, postfix="_backward")
+        
+        # Bidirectional fusion
+        fusion_distance = self.mse_loss(forward_outputs, backward_outputs).detach()
+        fusion_distance = fusion_distance + (1-time_mel_masks[..., 0]) * 1e9
+        _, t_fusion = torch.min(fusion_distance, dim=-1)
+        mel2mel = torch.arange(fusion_distance.size(1))[None,:].repeat(fusion_distance.size(0),1).to(fusion_distance.device)
+        forward_mel_mask = (mel2mel < t_fusion[:, None]).float()[:,:,None]
+        backward_mel_mask = 1 - (mel2mel < t_fusion[:, None]).float()[:,:,None]
+        output['mel_out'] = (forward_outputs * forward_mel_mask + backward_outputs * backward_mel_mask) * time_mel_masks + target*(1-time_mel_masks)
+        
         self.add_dur_loss(output['dur'], mel2ph, txt_tokens, losses=losses)
-        if hparams['use_pitch_embed']:
-            self.add_pitch_loss(output, sample, losses)
-        # if hparams['use_energy_embed']:
-        #     self.add_energy_loss(output['energy_pred'], energy, losses)
         if not infer:
             return losses, output
         else:
@@ -72,8 +80,18 @@ class EditTTSTask(SpeechEditingBaseTask):
         if batch_idx < hparams['num_valid_plots']:
             model_out = self.model(
                 txt_tokens, time_mel_masks, spk_embed=spk_embed, mel2ph=mel2ph, f0=f0, uv=uv, energy=energy, ref_mels=target, infer=True)
-            model_out['mel_out'] = model_out['mel_out']*time_mel_masks + target*(1-time_mel_masks)
-            # gt_f0 = denorm_f0(sample['f0'], sample['uv'], hparams)
+            
+            # Bidirectional fusion
+            forward_outputs = output['forward_outputs']
+            backward_outputs = output['backward_outputs']
+            fusion_distance = self.mse_loss(forward_outputs, backward_outputs).detach()
+            fusion_distance = fusion_distance + (1-time_mel_masks[..., 0]) * 1e9
+            _, t_fusion = torch.min(fusion_distance, dim=-1)
+            mel2mel = torch.arange(fusion_distance.size(1))[None,:].repeat(fusion_distance.size(0),1).to(fusion_distance.device)
+            forward_mel_mask = (mel2mel < t_fusion[:, None]).float()[:,:,None]
+            backward_mel_mask = 1 - (mel2mel < t_fusion[:, None]).float()[:,:,None]
+            model_out['mel_out'] = (forward_outputs * forward_mel_mask + backward_outputs * backward_mel_mask) * time_mel_masks + target*(1-time_mel_masks)
+
             self.plot_wav(batch_idx, sample['mels'], model_out['mel_out'], is_mel=True, gt_f0=None, f0=None)
             self.plot_mel(batch_idx, sample['mels'], model_out['mel_out'])
         return outputs
