@@ -5,7 +5,7 @@ from torch import nn
 from torch.nn import Linear
 
 from modules.commons.layers import Embedding
-from modules.speech_editing.a3t.conformer import ConformerEncoder, ConformerDecoder
+from modules.speech_editing.a3t.a3t_conformer import ConformerEncoder, ConformerDecoder
 from modules.speech_editing.a3t.a3t_postnet import Postnet
 from modules.tts.fs import FastSpeech
 from modules.commons.nar_tts_modules import DurationPredictor
@@ -50,7 +50,7 @@ class A3T(FastSpeech):
     def run_encoders(self, txt_tokens, mel2ph, mels, style_embed, stutter_mel_masks, time_mel_masks, ret):
         txt_nonpadding = (txt_tokens > 0).float()[:, :, None]
         encoder_out, encoder_padding_mask = self.encoder(txt_tokens, txt_nonpadding, mels, mel2ph, time_mel_masks)
-        encoder_out = encoder_out * encoder_padding_mask
+        encoder_out = (encoder_out[0] * encoder_padding_mask, encoder_out[1])
         return encoder_out, encoder_padding_mask
 
     def run_decoder(self, encoder_out, encoder_padding_mask, mels, time_mel_masks, global_step=0):
