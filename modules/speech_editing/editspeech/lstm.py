@@ -61,7 +61,7 @@ class LSTM_Seq2Seq(nn.Module):
         self.backward_decoder = lstm_decoder(in_out_dim = output_dim, hidden_size = hidden_size)
 
 
-    def forward(self, input_tensor, target_tensor, target_len, infer=False):
+    def forward(self, input_tensor, target_tensor, target_len, time_mel_masks, infer=False):
         
         '''
         train lstm encoder-decoder
@@ -73,7 +73,7 @@ class LSTM_Seq2Seq(nn.Module):
         batch_size = input_tensor.size(1)
         
         # Add prenet output
-        prenet_output = self.prenet(target_tensor.transpose(0, 1)).transpose(0, 1)
+        prenet_output = self.prenet(target_tensor.transpose(0, 1)*(1-time_mel_masks)).transpose(0, 1)
         input_tensor = input_tensor + prenet_output
         
         # input tensor
@@ -105,7 +105,7 @@ class LSTM_Seq2Seq(nn.Module):
                 forward_outputs[t] = forward_decoder_output
                 backward_outputs[t] = backward_decoder_output
                 forward_decoder_input = target_tensor[t, :, :]
-                backward_decoder_input = target_tensor[t, :, :]
+                backward_decoder_input = torch.flip(target_tensor, dims=[0])[t, :, :]
         else:
             # Inference
             for t in range(target_len):

@@ -10,11 +10,11 @@ from tqdm import tqdm
 
 from modules.tts.fs import FastSpeech
 from modules.commons.transformer import SinusoidalPositionalEmbedding, DEFAULT_MAX_TARGET_POSITIONS
-from modules.speech_editing.edittts.lstm import LSTM_Seq2Seq
+from modules.speech_editing.editspeech.lstm import LSTM_Seq2Seq
 from utils.commons.hparams import hparams
 
 
-class EditTTS(nn.Module):
+class EditSpeech(nn.Module):
     def __init__(self, phone_encoder, out_dims):
         super().__init__()
         self.fs = FastSpeech(len(phone_encoder), hparams)
@@ -43,7 +43,7 @@ class EditTTS(nn.Module):
         # forward lstm decoder
         framelevel_hidden = decoder_inp.transpose(0, 1)
         ref_mels = ref_mels.transpose(0, 1)
-        forward_outputs, backward_outputs = self.decoder(framelevel_hidden, ref_mels, framelevel_hidden.shape[0], infer=infer)
+        forward_outputs, backward_outputs = self.decoder(framelevel_hidden, ref_mels, framelevel_hidden.shape[0], time_mel_masks, infer=infer)
         ret['forward_outputs'] = forward_outputs.transpose(0, 1)
         ret['backward_outputs'] = backward_outputs.transpose(0, 1)
         return ret

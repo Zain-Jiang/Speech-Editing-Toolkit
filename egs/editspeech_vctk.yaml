@@ -47,7 +47,7 @@ scheduler: warmup
 seed: 1234
 sigmoid_scale: false
 sort_by_len: true
-task_cls: tasks.speech_editing.edittts.EditTTSTask
+task_cls: tasks.speech_editing.editspeech.EditSpeechTask
 tb_log_interval: 100
 test_input_yaml: ''
 test_num: 100

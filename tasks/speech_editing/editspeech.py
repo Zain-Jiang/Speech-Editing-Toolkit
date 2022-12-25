@@ -4,15 +4,15 @@ import utils
 from utils.commons.hparams import hparams
 from utils.audio.pitch.utils import denorm_f0
 from modules.speech_editing.spec_denoiser.spec_denoiser_normal import GaussianDiffusion
-from modules.speech_editing.edittts.edittts import EditTTS
+from modules.speech_editing.editspeech.editspeech import EditSpeech
 from tasks.speech_editing.speech_editing_base import SpeechEditingBaseTask
 from tasks.tts.vocoder_infer.base_vocoder import get_vocoder_cls, BaseVocoder
 from tasks.speech_editing.dataset_utils import StutterSpeechDataset
 
 
-class EditTTSTask(SpeechEditingBaseTask):
+class EditSpeechTask(SpeechEditingBaseTask):
     def __init__(self):
-        super(EditTTSTask, self).__init__()
+        super(EditSpeechTask, self).__init__()
         self.dataset_cls = StutterSpeechDataset
         self.vocoder: BaseVocoder = get_vocoder_cls(hparams['vocoder'])()
 
@@ -22,7 +22,7 @@ class EditTTSTask(SpeechEditingBaseTask):
         return self.model
 
     def build_tts_model(self):
-        self.model = EditTTS(
+        self.model = EditSpeech(
             phone_encoder=self.token_encoder,
             out_dims=hparams['audio_num_mel_bins']
         )
@@ -46,7 +46,7 @@ class EditTTSTask(SpeechEditingBaseTask):
         self.add_mel_loss(backward_outputs*time_mel_masks, target*time_mel_masks, losses, postfix="_backward")
         
         # Bidirectional fusion
-        fusion_distance = self.mse_loss(forward_outputs, backward_outputs).detach()
+        fusion_distance = self.mse_loss(forward_outputs.clone().detach(), backward_outputs.clone().detach())
         fusion_distance = fusion_distance + (1-time_mel_masks[..., 0]) * 1e9
         _, t_fusion = torch.min(fusion_distance, dim=-1)
         mel2mel = torch.arange(fusion_distance.size(1))[None,:].repeat(fusion_distance.size(0),1).to(fusion_distance.device)
