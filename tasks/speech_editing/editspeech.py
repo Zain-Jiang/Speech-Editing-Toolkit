@@ -84,7 +84,7 @@ class EditSpeechTask(SpeechEditingBaseTask):
             # Bidirectional fusion
             forward_outputs = output['forward_outputs']
             backward_outputs = output['backward_outputs']
-            fusion_distance = self.mse_loss(forward_outputs, backward_outputs).detach()
+            fusion_distance = self.mse_loss(forward_outputs.clone().detach(), backward_outputs.clone().detach())
             fusion_distance = fusion_distance + (1-time_mel_masks[..., 0]) * 1e9
             _, t_fusion = torch.min(fusion_distance, dim=-1)
             mel2mel = torch.arange(fusion_distance.size(1))[None,:].repeat(fusion_distance.size(0),1).to(fusion_distance.device)

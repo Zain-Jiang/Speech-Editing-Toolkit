@@ -25,6 +25,12 @@ This repo contains unofficial PyTorch implementations of:
 [Demo page](https://daxintan-cuhk.github.io/EditSpeech/)
 - Our implementation of a generator-based spectrogram denoise diffusion models for speech editing.
 
+<p align="center">
+    <br>
+    <img src="assets/spec_denoiser.gif" width="200"/>
+    <br>
+</p>
+
 ## Supported Datasets
 Our framework supports the following datasets:
 
