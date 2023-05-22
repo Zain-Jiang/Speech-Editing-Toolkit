@@ -11,7 +11,7 @@
 This repo contains official PyTorch implementations of:
 
 - [FluentSpeech: Stutter-Oriented Automatic Speech Editing with Context-Aware Diffusion Models](https://github.com/Zain-Jiang/Speech-Editing-Toolkit) (ACL 2023) 
-[Demo page](https://speechai-demo.github.io/StutterSpeech/)
+[Demo page](https://speechai-demo.github.io/FluentSpeech/)
 <p align="center">
     <br>
     <img src="assets/spec_denoiser.gif" width="400" height="180"/>
