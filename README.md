@@ -14,7 +14,7 @@ This repo contains official PyTorch implementations of:
 [Demo page](https://speechai-demo.github.io/StutterSpeech/)
 <p align="center">
     <br>
-    <img src="assets/spec_denoiser.gif" width="300" height="100"/>
+    <img src="assets/spec_denoiser.gif" width="400" height="180"/>
     <br>
 </p>
 
