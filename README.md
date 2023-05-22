@@ -12,6 +12,11 @@ This repo contains official PyTorch implementations of:
 
 - [FluentSpeech: Stutter-Oriented Automatic Speech Editing with Context-Aware Diffusion Models](https://github.com/Zain-Jiang/Speech-Editing-Toolkit) (ACL 2023) 
 [Demo page](https://speechai-demo.github.io/StutterSpeech/)
+<p align="center">
+    <br>
+    <img src="assets/spec_denoiser.gif" width="300" height="100"/>
+    <br>
+</p>
 
 This repo contains unofficial PyTorch implementations of:
 
@@ -23,12 +28,6 @@ This repo contains unofficial PyTorch implementations of:
 [Demo page](https://daxintan-cuhk.github.io/EditSpeech/)
 
 
-
-<p align="center">
-    <br>
-    <img src="assets/spec_denoiser.gif" width="200"/>
-    <br>
-</p>
 
 ## Supported Datasets
 Our framework supports the following datasets:
