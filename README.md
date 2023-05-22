@@ -8,13 +8,6 @@
 <p> Speech-Editing-Toolkit</p>
 </h2>
 
-<div align="center">
-
-[![GitHub Stars](https://img.shields.io/github/stars/Zain-Jiang/Speech-Editing-Toolkit?style=social)](https://github.com/Zain-Jiang/Speech-Editing-Toolkit)
-![visitors](https://visitor-badge.glitch.me/badge?page_id=Zain-Jiang/Speech-Editing-Toolkit)
-
-</div>
-
 This repo contains unofficial PyTorch implementations of:
 
 - [CampNet: Context-Aware Mask Prediction for End-to-End Text-Based Speech Editing](https://arxiv.org/pdf/2202.09950) (ICASSP 2022)  
