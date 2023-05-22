@@ -8,6 +8,10 @@
 <p> Speech-Editing-Toolkit</p>
 </h2>
 
+This repo contains official PyTorch implementations of:
+
+- [FluentSpeech: Stutter-Oriented Automatic Speech Editing with Context-Aware Diffusion Models](https://github.com/Zain-Jiang/Speech-Editing-Toolkit) (ACL 2023) [Demo page](https://speechai-demo.github.io/StutterSpeech/)
+
 This repo contains unofficial PyTorch implementations of:
 
 - [CampNet: Context-Aware Mask Prediction for End-to-End Text-Based Speech Editing](https://arxiv.org/pdf/2202.09950) (ICASSP 2022)  
@@ -17,9 +21,7 @@ This repo contains unofficial PyTorch implementations of:
 - [EditSpeech: A text based speech editing system using partial inference and bidirectional fusion](https://arxiv.org/pdf/2107.01554) (ASRU 2021)  
 [Demo page](https://daxintan-cuhk.github.io/EditSpeech/)
 
-This repo contains official PyTorch implementations of:
 
-- FluentSpeech: Stutter-Oriented Automatic Speech Editing with Context-Aware Diffusion Models (ACL 2023) [Demo page](https://speechai-demo.github.io/StutterSpeech/)
 
 <p align="center">
     <br>
