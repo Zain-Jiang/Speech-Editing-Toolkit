@@ -23,7 +23,10 @@ This repo contains unofficial PyTorch implementations of:
 [Demo page](https://educated-toothpaste-462.notion.site/Demo-b0edd300e6004c508744c6259369a468) | [Official code](https://github.com/richardbaihe/a3t)
 - [EditSpeech: A text based speech editing system using partial inference and bidirectional fusion](https://arxiv.org/pdf/2107.01554) (ASRU 2021)  
 [Demo page](https://daxintan-cuhk.github.io/EditSpeech/)
-- Our implementation of a generator-based spectrogram denoise diffusion models for speech editing.
+
+This repo contains official PyTorch implementations of:
+
+- FluentSpeech: Stutter-Oriented Automatic Speech Editing with Context-Aware Diffusion Models (ACL 2023) [Demo page](https://speechai-demo.github.io/StutterSpeech/)
 
 <p align="center">
     <br>
@@ -36,7 +39,7 @@ Our framework supports the following datasets:
 
 - VCTK
 - LibriTTS
-- StammerSpeech Dataset (We will publish it later)
+- SASE Dataset (We will publish it later)
 
 ## Install Dependencies
 Please install the latest numpy, torch and tensorboard first. Then run the following commands:
