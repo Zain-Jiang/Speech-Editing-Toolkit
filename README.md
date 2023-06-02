@@ -65,14 +65,16 @@ python data_gen/tts/base_binarizer.py
 
 ## Train
 ```bash
-# example run
-CUDA_VISIBLE_DEVICES=2 python tasks/run.py --config egs/campnet_vctk.yaml --exp_name campnet_vctk --reset
+# Example run for CampNet.
+CUDA_VISIBLE_DEVICES=0 python tasks/run.py --config egs/campnet_vctk.yaml --exp_name campnet_vctk --reset
+# Example run for FluentSpeech.
+CUDA_VISIBLE_DEVICES=0 python tasks/run.py --config egs/spec_denoiser_vctk.yaml --exp_name fluentspeech_vctk --reset
 ```
 
 ## Inference
 ```bash
 # run with full inference
-CUDA_VISIBLE_DEVICES=2 python tasks/run.py --config egs/campnet_vctk.yaml --exp_name campnet_vctk --infer
+CUDA_VISIBLE_DEVICES=0 python tasks/run.py --config egs/campnet_vctk.yaml --exp_name campnet_vctk --infer
 
 # run with one example
 python inference/tts/campnet.py --config=/checkpoints/campnet_vctk/config.yaml --exp_name campnet_vctk --hparams='work_dir=checkpoints/campnet_vctk'
