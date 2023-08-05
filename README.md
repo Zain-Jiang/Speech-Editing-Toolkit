@@ -63,21 +63,32 @@ python data_gen/tts/run_mfa_train_aligh.sh
 python data_gen/tts/base_binarizer.py
 ```
 
-## Train
+## Train (FluentSpeech)
+```bash
+# Example run for FluentSpeech.
+CUDA_VISIBLE_DEVICES=0 python tasks/run.py --config egs/spec_denoiser.yaml --exp_name spec_denoiser --reset
+```
+
+## Train (Baselines)
 ```bash
 # Example run for CampNet.
-CUDA_VISIBLE_DEVICES=0 python tasks/run.py --config egs/campnet_vctk.yaml --exp_name campnet_vctk --reset
-# Example run for FluentSpeech.
-CUDA_VISIBLE_DEVICES=0 python tasks/run.py --config egs/spec_denoiser_vctk.yaml --exp_name fluentspeech_vctk --reset
+CUDA_VISIBLE_DEVICES=0 python tasks/run.py --config egs/campnet.yaml --exp_name campnet --reset
+# Example run for A3T.
+CUDA_VISIBLE_DEVICES=0 python tasks/run.py --config egs/a3t.yaml --exp_name a3t --reset
+# Example run for EditSpeech.
+CUDA_VISIBLE_DEVICES=0 python tasks/run.py --config egs/editspeech.yaml --exp_name editspeech --reset
 ```
 
 ## Inference
-```bash
-# run with full inference
-CUDA_VISIBLE_DEVICES=0 python tasks/run.py --config egs/campnet_vctk.yaml --exp_name campnet_vctk --infer
+We provide the data structure of inference in inference/example.csv. `text` and `edited_text` refer to the original text and target text. `region` refers to the word idx range (start from 1 ) that you want to edit. `edited_region` refers to the word idx range of the edited_text.
 
+|  id   | item_name  | text | edited_text| wav_fn_orig | edited_region| region|
+| -- | -- | -- | -- | -- | -- | -- |
+|  0  | 1  | "this is a libri vox recording" | "this is a funny joke shows." | inference/audio_backup/1.wav | [3,6] | [3,6] |
+
+```bash
 # run with one example
-python inference/tts/campnet.py --config=/checkpoints/campnet_vctk/config.yaml --exp_name campnet_vctk --hparams='work_dir=checkpoints/campnet_vctk'
+python inference/tts/spec_denoiser.py --exp_name spec_denoiser
 ```
 
 ## Citation

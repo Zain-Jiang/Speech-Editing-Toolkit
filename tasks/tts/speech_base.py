@@ -38,10 +38,7 @@ class SpeechBaseTask(BaseTask):
         self.dataset_cls = BaseSpeechDataset
         self.vocoder = None
         data_dir = hparams['binary_data_dir']
-        if not hparams['use_word_input']:
-            self.token_encoder = build_token_encoder(f'{data_dir}/phone_set.json')
-        else:
-            self.token_encoder = build_token_encoder(f'{data_dir}/word_set.json')
+        self.token_encoder = build_token_encoder(f'{data_dir}/phone_set.json')
         self.padding_idx = self.token_encoder.pad()
         self.eos_idx = self.token_encoder.eos()
         self.seg_idx = self.token_encoder.seg()

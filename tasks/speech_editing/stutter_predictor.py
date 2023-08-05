@@ -56,31 +56,6 @@ class MultiFocalLoss(torch.nn.Module):
 
         return loss
 
-
-class DSCLoss(torch.nn.Module):
-
-    def __init__(self, alpha: float = 1.0, smooth: float = 1e-3, reduction: str = "mean", ignore_index=2):
-        super().__init__()
-        self.alpha = alpha
-        self.smooth = smooth
-        self.reduction = reduction
-        self.num_class = 3
-        self.ignore_index = 2
-
-    def forward(self, logits, targets):
-        logits = logits.transpose(1,2).contiguous().view(-1, self.num_class)
-        targets = targets.view(-1, 1)
-        probs = torch.softmax(logits, dim=1)
-        probs = probs.gather(1, index=targets)
-
-        probs_with_factor = ((1 - probs) ** self.alpha) * probs
-
-        loss = 1 - (2 * probs_with_factor + self.smooth) / (probs_with_factor + 1 + self.smooth)
-        loss[targets==self.ignore_index] = 0
-
-        if self.reduction == "mean":
-            return loss.mean()
-
 class StutterPredictorTask(SpeechEditingBaseTask):
     def __init__(self):
         super(StutterPredictorTask, self).__init__()
@@ -88,7 +63,6 @@ class StutterPredictorTask(SpeechEditingBaseTask):
         self.vocoder: BaseVocoder = get_vocoder_cls(hparams['vocoder'])()
         self.ce_loss = nn.CrossEntropyLoss(ignore_index=hparams.get('stutter_pad_idx', -1))
         self.focal_loss = MultiFocalLoss(ignore_index=hparams.get('stutter_pad_idx', -1))
-        # self.ce_loss = DSCLoss(ignore_index=hparams.get('stutter_pad_idx', -1))
 
     def build_model(self):
         self.build_stutter_predictor_model()
@@ -125,8 +99,10 @@ class StutterPredictorTask(SpeechEditingBaseTask):
         mels = sample['mels']  # [B, T_s, 80]
         mel2ph = sample['mel2ph']
         time_mel_masks = sample['time_mel_masks'][:,:,None]
+
+        # Construct the blocked stutter mask
+        block_size = hparams['stutter_block_size']
         stutter_mel_masks = sample['stutter_mel_masks']
-        block_size = 16
         B, T = stutter_mel_masks.shape
         stutter_mel_masks = stutter_mel_masks.reshape(B, T//block_size, block_size) # [B, T//block_size, block_size]
         stutter_mel_masks = stutter_mel_masks.sum(-1) # [B, T//block_size]
@@ -171,9 +147,12 @@ class StutterPredictorTask(SpeechEditingBaseTask):
         outputs['losses'], output = self.run_model(sample, infer=False)
         
         _, pred_idx = output['logits'].max(dim=-1)
-        acc = (pred_idx==output['stutter_label']).sum() / output['stutter_label'].numel()
+        # Cal Acc (Ignore the pad token)
+        acc = ( ((pred_idx==output['stutter_label']) & (pred_idx==0)).float().sum() \
+            + ((pred_idx==output['stutter_label']) & (pred_idx==1)).float().sum() ) \
+            / output['stutter_label'].numel()
         outputs['losses']['acc'] = acc
-
+        # Cal Acc_1
         if (output['stutter_label'][output['stutter_label'] == 1]).numel() != 0:
             acc_1 = ((pred_idx[output['stutter_label'] == 1] == 1).float()).sum() / (output['stutter_label'][output['stutter_label'] == 1]).sum()
             outputs['losses']['acc_1'] = acc_1

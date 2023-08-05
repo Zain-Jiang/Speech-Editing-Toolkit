@@ -33,20 +33,18 @@ class ConformerLayers(nn.Module):
         else:
             self.layer_norm = nn.Linear(hidden_size, hidden_size)
 
-    def forward(self, x_input, padding_mask=None):
+    def forward(self, x, pos_emb, padding_mask=None):
         """
 
         :param x: [B, T, H]
         :param padding_mask: [B, T]
         :return: [B, T, H]
         """
-        nonpadding_mask = x_input[0].abs().sum(-1) > 0
-        x = x_input
+        nonpadding_mask = x.abs().sum(-1) > 0
         for l in self.encoder_layers:
-            x, mask = l(x, nonpadding_mask[:, None, :])
-        x, pos_emb = x[0], x[1]
+            x, mask = l(x, pos_emb, nonpadding_mask[:, None, :])
         x = self.layer_norm(x) * nonpadding_mask.float()[:, :, None]
-        return (x, pos_emb)
+        return x
 
 
 class ConformerEncoder(ConformerLayers):
@@ -73,45 +71,45 @@ class ConformerEncoder(ConformerLayers):
         mel_nonpadding = (mel2ph > 0).float()[:, :, None]
         encoder_padding_mask = torch.cat([mel_nonpadding, txt_nonpadding], dim=1)
 
-        text_embed = self.forward_txt_embedding(txt_tokens, txt_nonpadding) # [B, T_t, H]
-        mel_embed = self.forward_mel_embedding(mels, mel_nonpadding, mel2ph, time_mel_masks) # [B, T_t, H]
-        x = torch.cat([mel_embed[0], text_embed[0]], dim=1) * encoder_padding_mask # [B, T_t + T_m, H]
-        pos_emb = torch.cat([mel_embed[1], text_embed[1]], dim=1) * encoder_padding_mask # [B, T_t + T_m, H]
-        x = super(ConformerEncoder, self).forward((x, pos_emb))
-        return x, encoder_padding_mask
+        text_embed, text_pos = self.forward_txt_embedding(txt_tokens, txt_nonpadding) # [B, T_t, H]
+        mel_embed, mel_pos = self.forward_mel_embedding(mels, mel_nonpadding, mel2ph, time_mel_masks) # [B, T_t, H]
+        x = torch.cat([mel_embed, text_embed], dim=1) * encoder_padding_mask # [B, T_t + T_m, H]
+        pos_emb = torch.cat([mel_pos, text_pos], dim=1) * encoder_padding_mask # [B, T_t + T_m, H]
+        x = super(ConformerEncoder, self).forward(x, pos_emb)
+        return x, pos_emb, encoder_padding_mask
 
     def forward_txt_embedding(self, txt_tokens, txt_nonpadding):
         ph2ph = torch.arange(txt_tokens.shape[1])[None, :].to(txt_tokens.device) + 1
         # text embedding
-        txt_feat = self.embed_scale * self.txt_embed(txt_tokens)
+        txt_feat = self.txt_embed(txt_tokens) * txt_nonpadding
         # positional embedding
-        txt_feat = self.pos_embed(txt_feat)
+        txt_feat, txt_pos = self.pos_embed(txt_feat)
         # segment embedding
         txt_seg_emb = self.seg_embed(ph2ph) 
-        txt_feat = (txt_feat[0] + txt_seg_emb, txt_feat[1])
-        return txt_feat
+        txt_feat = txt_feat + txt_seg_emb
+        return txt_feat, txt_pos
     
     def forward_mel_embedding(self, mels, mel_nonpadding, mel2ph, time_mel_masks):
         # mel embedding
         mels_masked = mels * (1-time_mel_masks)
         mel_feat = self.mel_embed(mels_masked) * mel_nonpadding
         # positional embedding
-        mel_feat = self.pos_embed(mel_feat)
+        mel_feat, mel_pos = self.pos_embed(mel_feat)
         # segment embedding
         mel_seg_emb = self.seg_embed(mel2ph)
-        mel_feat = (mel_feat[0] + mel_seg_emb, mel_feat[1])
-        return mel_feat
+        mel_feat = mel_feat + mel_seg_emb
+        return mel_feat, mel_pos
 
 
 class ConformerDecoder(ConformerLayers):
     def __init__(self, hidden_size, num_layers=None, kernel_size=9):
         super().__init__(hidden_size, num_layers, kernel_size=kernel_size)
 
-    def forward(self, encoder_out, encoder_padding_mask):
+    def forward(self, encoder_out, pos_emb, encoder_padding_mask):
         """
 
         :param src_tokens: [B, T]
         :return: [B x T x C]
         """
-        x = super(ConformerDecoder, self).forward(encoder_out, encoder_padding_mask)
-        return x[0]
+        x = super(ConformerDecoder, self).forward(encoder_out, pos_emb, encoder_padding_mask)
+        return x

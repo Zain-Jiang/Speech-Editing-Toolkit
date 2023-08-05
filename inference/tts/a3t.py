@@ -3,7 +3,8 @@ import numpy as np
 import torch
 from data_gen.tts.base_preprocess import BasePreprocessor
 from inference.tts.base_tts_infer import BaseTTSInfer
-from modules.speech_editing.campnet.campnet import CampNet
+from inference.tts.infer_utils import get_align_from_mfa_output
+from modules.speech_editing.a3t.a3t import A3T
 from utils.commons.ckpt_utils import load_ckpt
 from utils.commons.hparams import hparams
 from utils.spec_aug.time_mask import generate_time_mask
@@ -29,7 +30,7 @@ class StutterSpeechInfer(BaseTTSInfer):
     def build_model(self):
         ph_dict_size = len(self.ph_encoder)
         word_dict_size = len(self.word_encoder)
-        model = CampNet(ph_dict_size, word_dict_size, self.hparams)
+        model = A3T(ph_dict_size, word_dict_size, self.hparams)
         load_ckpt(model, hparams['work_dir'], 'model')
         model.to(self.device)
         model.eval()
@@ -40,7 +41,7 @@ class StutterSpeechInfer(BaseTTSInfer):
         with torch.no_grad():
             output = self.model(
                 sample['txt_tokens'],
-                sample['word_tokens'],
+                mel2ph=sample['mel2ph'],
                 ph2word=sample['ph2word'],
                 word_len=sample['word_lengths'].max(),
                 infer=True,
@@ -49,7 +50,7 @@ class StutterSpeechInfer(BaseTTSInfer):
                 time_mel_masks=sample['time_mask'],
                 # spk_id=sample.get('spk_ids')
             )
-            mel_out = output['mel_out_fine'] * sample['time_mask'] + sample['mel'] * (1-sample['time_mask'])
+            mel_out = output['mel_out_postnet'] * sample['time_mask'] + sample['mel'] * (1-sample['time_mask'])
             wav_out = self.run_vocoder(mel_out)
             wav_gt = self.run_vocoder(sample['mel'])
 
@@ -83,9 +84,13 @@ class StutterSpeechInfer(BaseTTSInfer):
         time_mask[120:195] = 1.0
         # time_mask = generate_time_mask(torch.Tensor(mel)).numpy()
 
+        mfa_textgrid = f'inference/audio/mfa_out/{item_name}.TextGrid'
+        mel2ph, dur = get_align_from_mfa_output(mfa_textgrid, ph, ph_token, mel)
+
         item = {'item_name': item_name, 'text': txt, 'ph': ph,
                 'ph_token': ph_token, 'word_token': word_token, 'ph2word': ph2word,
-                'mel': mel, 'wav': wav, 'time_mask': time_mask}
+                'mel': mel, 'wav': wav, 'time_mask': time_mask,
+                'mel2ph': mel2ph}
         item['ph_len'] = len(item['ph_token'])
         return item
 
@@ -98,6 +103,7 @@ class StutterSpeechInfer(BaseTTSInfer):
         word_tokens = torch.LongTensor(item['word_token'])[None, :].to(self.device)
         word_lengths = torch.LongTensor([txt_tokens.shape[1]]).to(self.device)
         ph2word = torch.LongTensor(item['ph2word'])[None, :].to(self.device)
+        mel2ph = torch.LongTensor(item['mel2ph'])[None, :].to(self.device)
         # spk_ids = torch.LongTensor(item['spk_id'])[None, :].to(self.device)
 
         # masked prediction related
@@ -108,6 +114,7 @@ class StutterSpeechInfer(BaseTTSInfer):
             'item_name': item_names,
             'text': text,
             'ph': ph,
+            'mel2ph': mel2ph,
             'txt_tokens': txt_tokens,
             'txt_lengths': txt_lengths,
             'word_tokens': word_tokens,
@@ -134,6 +141,7 @@ class StutterSpeechInfer(BaseTTSInfer):
             'text': 'we didnt enjoy the first game , but today they were excellent .',
             'mel': wav2spec_res['mel'],
             'wav': wav2spec_res['wav'],
+            'item_name': 'p323_290'
         }
         infer_ins = cls(hp)
         wav_out, wav_gt, mel_out, mel_gt = infer_ins.infer_once(inp)

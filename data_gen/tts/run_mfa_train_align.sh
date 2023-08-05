@@ -3,7 +3,9 @@ set -e
 CORPUS=${NUM_JOB:-stutter_set}
 NUM_JOB=${NUM_JOB:-36}
 echo "| Training MFA using ${NUM_JOB} cores."
-BASE_DIR=data/processed/$CORPUS
+#BASE_DIR=checkpoints/yq_wo_spec_vctk/processed/$CORPUS
+#################!!!!!!!!!!!!!!!!需要修改的地方！！！！！！！！！#############################
+BASE_DIR=checkpoints/yq_wo_spec_vctk/processed
 MODEL_NAME=${MODEL_NAME:-"mfa_model"}
 PRETRAIN_MODEL_NAME=${PRETRAIN_MODEL_NAME:-"mfa_model_pretrain"}
 MFA_INPUTS=${MFA_INPUTS:-"mfa_inputs"}

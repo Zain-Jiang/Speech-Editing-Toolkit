@@ -13,6 +13,10 @@ from utils.commons.hparams import hparams
 from utils.eval.mcd import get_metrics_mels
 
 
+import pandas as pd
+from numpy import mean
+from tqdm import tqdm
+
 class SpeechEditingBaseTask(SpeechBaseTask):
     def __init__(self):
         super().__init__()
@@ -20,6 +24,9 @@ class SpeechEditingBaseTask(SpeechBaseTask):
         self.sil_ph = self.token_encoder.sil_phonemes()
 
         self.mcd_dict = {'mcd_total': 0, 'num': 0}
+        
+        self.metadata = pd.read_csv('data/processed/vctk/metadata.csv')
+        self.metadata.index = self.metadata['item_name']
 
     def build_tts_model(self):
         dict_size = len(self.token_encoder)
@@ -166,6 +173,7 @@ class SpeechEditingBaseTask(SpeechBaseTask):
         base_fn = base_fn.replace(' ', '_')
         gen_dir = self.gen_dir
         wav_pred = self.vocoder.spec2wav(mel_pred)
+        '''
         self.saving_result_pool.add_job(self.save_result, args=[
             wav_pred, mel_pred, base_fn % 'P', gen_dir, str_phs, mel2ph_pred])
         mel_pred_seg = mel_pred[time_mel_masks==1]
@@ -180,7 +188,108 @@ class SpeechEditingBaseTask(SpeechBaseTask):
             wav_gt_seg =self.vocoder.spec2wav(mel_gt_seg)
             self.saving_result_pool.add_job(self.save_result, args=[
                 wav_gt_seg, mel_gt_seg, base_fn % 'G_SEG', gen_dir, None, None])
+        '''
+
         
+        ###################dur compute#######################
+        #print(item_name)
+        ph2word = self.metadata.loc[item_name, 'ph2word']
+        word = self.metadata.loc[item_name, 'word']
+        word_list = word.split()
+        #print(word_list)
+        ph2word = ph2word[1:-1]
+        ph2word = ph2word.split(',')
+        ph2word = [int(i) for i in ph2word]
+        #print("ph2word")
+        #print(ph2word)
+    
+        dur_info = self.get_plot_dur_info(sample, outputs)
+        #print("gt dur")
+        dur_gt_ph = dur_info['dur_gt'].cpu().numpy()
+        #print(dur_gt_ph)
+        #print("predict dur")
+        dur_pred_ph = dur_info['dur_pred'][0].cpu().numpy()
+        #print(dur_pred_ph)
+        #print(sample)
+        
+        def ph2word_dur(phdur, ph2word):
+            word_dur = [0] * ph2word[-1]
+            for dur, index in zip(phdur, ph2word):
+                word_dur[index-1] += dur
+            return word_dur
+        dur_gt_word = ph2word_dur(dur_gt_ph, ph2word)
+        dur_pred_word = ph2word_dur(dur_pred_ph, ph2word)
+        #print(dur_gt_word)
+        #print(dur_pred_word)
+        dur_pred_word_process = []
+        dur_gt_word_process = []
+        for word, gt,pred in zip(word_list, dur_gt_word, dur_pred_word):
+            if(word == '<BOS>' or word[0].isalpha()):
+                dur_pred_word_process.append(pred)
+                dur_gt_word_process.append(gt)
+            elif(word == ',' or word == '|' or word == '<EOS>'):
+                gt += dur_gt_word_process[-1]
+                pred += dur_pred_word_process[-1]
+                del dur_pred_word_process[-1]
+                del dur_gt_word_process[-1]
+                dur_pred_word_process.append(pred)
+                dur_gt_word_process.append(gt)
+            else:
+                print("error")
+                print(word)
+                exit(1)
+        #print(dur_gt_word_process)
+        #print(dur_pred_word_process)
+
+
+        error = []
+        for i in range(len(dur_gt_word_process)):
+            error.append((dur_pred_word_process[i] - dur_gt_word_process[i]) ** 2)
+        dur_MSE = mean(error)
+        
+        '''
+        ############## pitch  calculate####################
+        print(sample)
+        print(outputs)
+        exit(1)
+        uv = sample['uv']
+        gt_pitch = sample['f0']
+        predict_pitch = outputs['f0_denorm_pred']
+        ###########frame level################
+        frame_uv = uv[0].cpu().numpy()
+        gt_pitch_frame = denorm_f0(gt_pitch, None)[0].cpu().numpy()
+        predict_pitch_frame = predict_pitch[0].cpu().numpy()
+        error_frame = []
+        for i in range(len(gt_pitch_frame)):
+            if(frame_uv[i]==1.):
+                continue
+            else:
+                error_frame.append((predict_pitch_frame[i] - gt_pitch_frame[i]) ** 2)
+        frame_pitch_MSE = mean(error_frame)
+        ##############ph level################
+        ph_token = sample['txt_tokens'][0]
+        mel2ph = sample['mel2ph'][0]
+        gt_pitch_ph = denorm_f0(gt_pitch, None)[0]
+        predict_pitch_ph = predict_pitch[0]
+        uv_ph = uv[0]
+        f0_phlevel_sum = torch.zeros_like(ph_token).float().scatter_add(0, mel2ph - 1, gt_pitch_ph)
+        f0_phlevel_num = torch.zeros_like(ph_token).float().scatter_add(
+                    0, mel2ph - 1, torch.ones_like(gt_pitch_ph)).clamp_min(1)
+        gt_pitch_ph = f0_phlevel_sum / f0_phlevel_num
+        pre_f0_phlevel_sum = torch.zeros_like(ph_token).float().scatter_add(0, mel2ph - 1, predict_pitch_ph)
+        pre_f0_phlevel_num = torch.zeros_like(ph_token).float().scatter_add(
+                    0, mel2ph - 1, torch.ones_like(predict_pitch_ph)).clamp_min(1)
+        predict_pitch_ph = pre_f0_phlevel_sum / pre_f0_phlevel_num
+        uv_phlevel_sum = torch.zeros_like(ph_token).float().scatter_add(0, mel2ph - 1, uv_ph)
+        uv_phlevel_num = torch.zeros_like(ph_token).float().scatter_add(
+                    0, mel2ph - 1, torch.ones_like(uv_ph)).clamp_min(1)
+        uv_ph = uv_phlevel_sum / uv_phlevel_num
+        print(gt_pitch_ph)
+        print(predict_pitch_ph)
+        print(uv_ph)
+        exit(1)
+        '''
+
         # print(f"Pred_shape: {mel_pred.shape}, gt_shape: {mel_gt.shape}")
         return {
             'item_name': item_name,
@@ -189,4 +298,7 @@ class SpeechEditingBaseTask(SpeechBaseTask):
             'wav_fn_pred': base_fn % 'P',
             'wav_fn_gt': base_fn % 'G',
             'wav_fn_orig': sample['wav_fn'][0],
+            'dur_loss': dur_MSE,
         }
+    
+   

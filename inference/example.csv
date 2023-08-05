@@ -1,0 +1,2 @@
+id,item_name,text,edited_text,wav_fn_orig,edited_region,region
+4,1,"this is a libri vox recording","this is a funny joke shows.",inference/audio_backup/1.wav,"[4,6]","[4,6]"

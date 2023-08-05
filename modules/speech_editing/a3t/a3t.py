@@ -42,20 +42,20 @@ class A3T(FastSpeech):
                 infer=False, tgt_mels=None, global_step=None, *args, **kwargs):     
         ret = {}
         style_embed = spk_embed
-        encoder_out, encoder_padding_mask = self.run_encoders(
+        encoder_out, pos_emb, encoder_padding_mask = self.run_encoders(
             txt_tokens, mel2ph, mels, style_embed, stutter_mel_masks, time_mel_masks, ret)
-        ret['mel_out_decoder'], ret['mel_out_postnet'] = self.run_decoder(encoder_out, encoder_padding_mask, mels, time_mel_masks, global_step)
+        ret['mel_out_decoder'], ret['mel_out_postnet'] = self.run_decoder(encoder_out, pos_emb, encoder_padding_mask, mels, time_mel_masks, global_step)
         return ret
 
     def run_encoders(self, txt_tokens, mel2ph, mels, style_embed, stutter_mel_masks, time_mel_masks, ret):
         txt_nonpadding = (txt_tokens > 0).float()[:, :, None]
-        encoder_out, encoder_padding_mask = self.encoder(txt_tokens, txt_nonpadding, mels, mel2ph, time_mel_masks)
-        encoder_out = (encoder_out[0] * encoder_padding_mask, encoder_out[1])
-        return encoder_out, encoder_padding_mask
+        encoder_out, pos_emb, encoder_padding_mask = self.encoder(txt_tokens, txt_nonpadding, mels, mel2ph, time_mel_masks)
+        encoder_out = encoder_out * encoder_padding_mask
+        return encoder_out, pos_emb, encoder_padding_mask
 
-    def run_decoder(self, encoder_out, encoder_padding_mask, mels, time_mel_masks, global_step=0):
+    def run_decoder(self, encoder_out, pos_emb, encoder_padding_mask, mels, time_mel_masks, global_step=0):
         mel_nonpadding = (mels.abs().sum(-1) > 0).float()[:, :, None]
-        decoder_out = self.a3t_decoder(encoder_out, encoder_padding_mask)[:,:mel_nonpadding.shape[1],:] * mel_nonpadding
+        decoder_out = self.a3t_decoder(encoder_out, pos_emb, encoder_padding_mask)[:,:mel_nonpadding.shape[1],:] * mel_nonpadding
         mel_out_decoder = self.mel_out_decoder(decoder_out) * mel_nonpadding
 
         mel_decoder = mels * (1-time_mel_masks) + mel_out_decoder * time_mel_masks

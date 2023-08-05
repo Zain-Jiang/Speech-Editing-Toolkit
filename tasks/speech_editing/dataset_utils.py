@@ -140,7 +140,7 @@ class StutterSpeechDataset(BaseSpeechDataset):
             elif self.hparams.get('mask_type') == 'alignment_aware':
                 time_mel_mask = generate_alignment_aware_time_mask(torch.zeros_like(sample['mel']), sample['mel2ph'], ratio=mask_ratio)
         else:
-            # In inference stage we randomly mask the 30% phoneme spans
+            # In inference stage we randomly mask the 50% phoneme spans
             time_mel_mask = generate_inference_mask(torch.zeros_like(sample['mel']), sample['mel2ph'], ratio=0.5)
         sample['time_mel_mask'] = time_mel_mask
         return sample

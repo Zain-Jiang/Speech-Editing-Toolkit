@@ -10,8 +10,8 @@ from scipy.spatial.distance import euclidean
 from python_speech_features import mfcc
 
 MAX_WAV_VALUE = 32768.1
-trainset_config = {'sampling_rate': 22050, 'filter_length': 1024, 'win_length': 1024, 'hop_length': 256, 'mel_fmin': 80,
-                   'mel_fmax': 8000}
+trainset_config = {'sampling_rate': 22050, 'filter_length': 1024, 'win_length': 1024, 'hop_length': 256, 'mel_fmin': 55,
+                   'mel_fmax': 7600}
 
 
 def load_wav_to_torch(full_path):
@@ -24,24 +24,18 @@ def load_wav_to_torch(full_path):
 
 def cal_mcd(wav_pair, use_dtw=False):
     ref, est = wav_pair
-    est_audio, _ = load_wav_to_torch(est)
-    ref_audio, _ = load_wav_to_torch(ref)
-    min_length = min(ref_audio.size(0), est_audio.size(0))
-    ref_audio = ref_audio[:min_length]
-    est_audio = est_audio[:min_length]
-    est_audio = est_audio.unsqueeze(0).unsqueeze(0)
-    ref_audio = ref_audio / MAX_WAV_VALUE
-    est_audio = est_audio / MAX_WAV_VALUE
-
-    est = est_audio.cpu().numpy()
-    ref = ref_audio.cpu().numpy()
-    ref_mfcc = mfcc(ref, nfft=trainset_config['filter_length'],
-                    winlen=trainset_config['win_length'] / trainset_config['sampling_rate'],
-                    winstep=trainset_config['hop_length'] / trainset_config['sampling_rate'], appendEnergy=False)
-    est_mfcc = mfcc(est, nfft=trainset_config['filter_length'],
-                    winlen=trainset_config['win_length'] / trainset_config['sampling_rate'],
-                    winstep=trainset_config['hop_length'] / trainset_config['sampling_rate'], appendEnergy=False)
-    mcd = (np.sum((ref_mfcc - est_mfcc) ** 2., 1) ** .5).mean() / ref_mfcc.shape[1]  # _mcd(ref_mfcc, est_mfcc)
+    est_audio, _ = librosa.core.load(est, sr=trainset_config['sampling_rate'])
+    ref_audio, _ = librosa.core.load(ref, sr=trainset_config['sampling_rate'])
+    est_mfcc = librosa.feature.mfcc(y=est_audio, sr=trainset_config['sampling_rate'], 
+                                    n_fft=1024, win_length=1024, fmin=55, fmax=7600, n_mels=80,
+                                    hop_length=256, n_mfcc=34, htk=True)
+    ref_mfcc = librosa.feature.mfcc(y=ref_audio, sr=trainset_config['sampling_rate'], 
+                                    n_fft=1024, win_length=1024, fmin=55, fmax=7600, n_mels=80,
+                                    hop_length=256, n_mfcc=34, htk=True)
+    
+    diff2sum = np.sum((est_mfcc - ref_mfcc) ** 2, 1)
+    mcd = np.mean(10.0 / np.log(10.0) * np.sqrt(2 * diff2sum), 0) / ref_mfcc.shape[1]
+    # mcd = (np.sum((ref_mfcc - est_mfcc) ** 2., 1) ** .5).mean() / ref_mfcc.shape[1]  # _mcd(ref_mfcc, est_mfcc)
 
     if use_dtw:
         distance, path = fastdtw(ref_mfcc, est_mfcc, dist=euclidean)

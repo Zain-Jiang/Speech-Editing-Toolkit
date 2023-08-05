@@ -82,8 +82,8 @@ class EditSpeechTask(SpeechEditingBaseTask):
                 txt_tokens, time_mel_masks, spk_embed=spk_embed, mel2ph=mel2ph, f0=f0, uv=uv, energy=energy, ref_mels=target, infer=True)
             
             # Bidirectional fusion
-            forward_outputs = output['forward_outputs']
-            backward_outputs = output['backward_outputs']
+            forward_outputs = model_out['forward_outputs']
+            backward_outputs = model_out['backward_outputs']
             fusion_distance = self.mse_loss(forward_outputs.clone().detach(), backward_outputs.clone().detach())
             fusion_distance = fusion_distance + (1-time_mel_masks[..., 0]) * 1e9
             _, t_fusion = torch.min(fusion_distance, dim=-1)

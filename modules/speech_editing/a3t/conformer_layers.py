@@ -179,7 +179,7 @@ class EncoderLayer(nn.Module):
         if self.concat_after:
             self.concat_linear = nn.Linear(size + size, size)
 
-    def forward(self, x_input, mask, cache=None):
+    def forward(self, x, pos_emb, mask, cache=None):
         """Compute encoded features.
         Args:
             x_input (Union[Tuple, torch.Tensor]): Input tensor w/ or w/o pos emb.
@@ -191,7 +191,6 @@ class EncoderLayer(nn.Module):
             torch.Tensor: Output tensor (#batch, time, size).
             torch.Tensor: Mask tensor (#batch, time).
         """
-        x, pos_emb = x_input[0], x_input[1]
 
         # whether to use macaron style
         if self.feed_forward_macaron is not None:
@@ -240,4 +239,4 @@ class EncoderLayer(nn.Module):
         if cache is not None:
             x = torch.cat([cache, x], dim=1)
 
-        return (x, pos_emb), mask
+        return x, mask

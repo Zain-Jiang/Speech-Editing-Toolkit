@@ -36,19 +36,6 @@ class A3TTask(SpeechEditingBaseTask):
         for n, m in self.model.named_children():
             num_params(m, model_name=n)
 
-    def _training_step(self, sample, batch_idx, optimizer_idx):
-        loss_output = {}
-        loss_weights = {}
-        #######################
-        #      Generator      #
-        #######################
-        loss_output, model_out = self.run_model(sample, infer=False)
-        self.model_out_gt = self.model_out = \
-            {k: v.detach() for k, v in model_out.items() if isinstance(v, torch.Tensor)}
-        total_loss = sum([loss_weights.get(k, 1) * v for k, v in loss_output.items() if isinstance(v, torch.Tensor) and v.requires_grad])
-        loss_output['batch_size'] = sample['txt_tokens'].size()[0]
-        return total_loss, loss_output
-
     def run_model(self, sample, infer=False, *args, **kwargs):
         txt_tokens = sample['txt_tokens']
         spk_embed = sample.get('spk_embed')

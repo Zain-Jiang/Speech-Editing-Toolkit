@@ -27,13 +27,13 @@ class BinarizationError(Exception):
 
 
 class BaseBinarizer:
-    def __init__(self, processed_data_dir='data/processed/stutter_set', binary_data_dir='data/binary/stutter_set'):
-        self.dataset_name = 'stutter_set'
+    def __init__(self, processed_data_dir='data/processed/vctk', binary_data_dir='data/binary/vctk_unseen'):
+        self.dataset_name = 'vctk'
         self.processed_data_dir = processed_data_dir
         self.binary_data_dir = binary_data_dir
         self.items = {}
         self.item_names = []
-        self.shuffle = True
+        self.shuffle = False
         self.with_spk_embed = True
         self.with_wav = False
 
@@ -60,17 +60,18 @@ class BaseBinarizer:
 
     @property
     def train_item_names(self):
-        range_ = self._convert_range([400, -1])
+        # 400 for seen, 4182 for unseen
+        range_ = self._convert_range([4182, -1])
         return self.item_names[range_[0]:range_[1]]
 
     @property
     def valid_item_names(self):
-        range_ = self._convert_range([0, 400])
+        range_ = self._convert_range([0, 4182])
         return self.item_names[range_[0]:range_[1]]
 
     @property
     def test_item_names(self):
-        range_ = self._convert_range([0, 400])
+        range_ = self._convert_range([0, 4182])
         return self.item_names[range_[0]:range_[1]]
 
     def _convert_range(self, range_):
@@ -146,7 +147,7 @@ class BaseBinarizer:
             return None
         try:
             # stutter label
-            cls.process_stutter_label(wav, mel, item, text2mel_params)
+            # cls.process_stutter_label(wav, mel, item, text2mel_params)
             # alignments
             n_bos_frames, n_eos_frames = 0, 0
             if text2mel_params['with_align']:
