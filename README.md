@@ -79,6 +79,14 @@ CUDA_VISIBLE_DEVICES=0 python tasks/run.py --config egs/a3t.yaml --exp_name a3t 
 CUDA_VISIBLE_DEVICES=0 python tasks/run.py --config egs/editspeech.yaml --exp_name editspeech --reset
 ```
 
+## Pretrained Checkpoint
+Here, we provide the pretrained checkpoint of fluentspeech. To start, please put the `config.yaml` and `xxx.ckpt` at `./checkpoints/spec_denoiser/`.
+
+|  model   | dataset  | url | checkpoint name |
+| -- | -- | -- | -- |
+|  FluentSpeech  | libritts-clean  | https://drive.google.com/drive/folders/1saqpWc4vrSgUZvRvHkf2QbwWSikMTyoo?usp=sharing | model_ckpt_steps_568000.ckpt |
+
+
 ## Inference
 We provide the data structure of inference in inference/example.csv. `text` and `edited_text` refer to the original text and target text. `region` refers to the word idx range (start from 1 ) that you want to edit. `edited_region` refers to the word idx range of the edited_text.
 
