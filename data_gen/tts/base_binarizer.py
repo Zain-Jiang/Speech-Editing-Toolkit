@@ -27,10 +27,10 @@ class BinarizationError(Exception):
 
 
 class BaseBinarizer:
-    def __init__(self, processed_data_dir='data/processed/vctk', binary_data_dir='data/binary/vctk_unseen'):
+    def __init__(self):
         self.dataset_name = 'vctk'
-        self.processed_data_dir = processed_data_dir
-        self.binary_data_dir = binary_data_dir
+        self.processed_data_dir = f'data/processed/{self.dataset_name}'
+        self.binary_data_dir = f'data/binary/{self.dataset_name}'
         self.items = {}
         self.item_names = []
         self.shuffle = False

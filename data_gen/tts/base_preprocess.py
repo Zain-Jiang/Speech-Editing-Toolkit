@@ -18,16 +18,14 @@ from utils.text.text_encoder import is_sil_phoneme, build_token_encoder
 class BasePreprocessor:
     def __init__(self):
         self.txt_processor = TxtProcessor()
-        self.dataset_name = 'stutter_set'
-        # self.raw_data_dir = f'data/raw/{self.dataset_name}'
-        # self.raw_data_dir = f'/home/jzy/SyntaSpeech/data/raw/LibriTTS'
-        self.raw_data_dir = f'data/raw/stutter_set'
+        self.dataset_name = 'vctk'
+        self.raw_data_dir = f'data/raw/{self.dataset_name}'
         self.processed_dir = f'data/processed/{self.dataset_name}'
         self.spk_map_fn = f"{self.processed_dir}/spk_map.json"
         self.reset_phone_dict = True
         self.reset_word_dict = True
         self.word_dict_size = 12500
-        self.num_spk = 1200 # 35 for stutter_set and 109 for vctk
+        self.num_spk = 1200 # 1200 for libritts and 109 for vctk. Here we set 1200 for compatibility.
         self.use_mfa = True
         self.seed = 1234
         self.nsample_per_mfa_group = 1000

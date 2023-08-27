@@ -58,6 +58,8 @@ download `model_ckpt_steps_2168000.ckpt`, `config.yaml`, from https://drive.goog
 
 ## Data Preprocess
 ```bash
+# You can set the 'self.dataset_name' in these files as 'vctk' or 'libritts' to process these datasets. And you should also set the ``BASE_DIR`` value in ``run_mfa_train_aligh.sh`` to the corresponding directory. 
+# The default dataset is ``vctk``.
 python data_gen/tts/base_preprocess.py
 python data_gen/tts/run_mfa_train_aligh.sh
 python data_gen/tts/base_binarizer.py
@@ -106,3 +108,11 @@ If you find this useful for your research, please star our repo.
 
 ## License and Agreement
 Any organization or individual is prohibited from using any technology mentioned in this paper to generate someone's speech without his/her consent, including but not limited to government leaders, political figures, and celebrities. If you do not comply with this item, you could be in violation of copyright laws.
+
+
+## Tips
+1. If you find the ``mfa_dict.txt`` and ``mfa_model.zip`` are missing, you need to run the preprocess script in our repo to get them. You can also download all of these files you need for inferencing the pre-trained model from
+``https://drive.google.com/drive/folders/1H-dk7cNYVn1DSzYq_q66rS5b5xpbdBi4?usp=sharing`` and put them in ``data/processed/libritts``. 
+2. Please specify the MFA version as 2.0.0rc3.
+
+If you find any other problems, please contact me.
