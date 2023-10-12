@@ -58,10 +58,10 @@ download `model_ckpt_steps_2168000.ckpt`, `config.yaml`, from https://drive.goog
 
 ## Data Preprocess
 ```bash
-# You can set the 'self.dataset_name' in these files as 'vctk' or 'libritts' to process these datasets. And you should also set the ``BASE_DIR`` value in ``run_mfa_train_aligh.sh`` to the corresponding directory. 
+# You can set the 'self.dataset_name' in these files as 'vctk' or 'libritts' to process these datasets. And you should also set the ``BASE_DIR`` value in ``run_mfa_train_align.sh`` to the corresponding directory. 
 # The default dataset is ``vctk``.
 python data_gen/tts/base_preprocess.py
-python data_gen/tts/run_mfa_train_aligh.sh
+python data_gen/tts/run_mfa_train_align.sh
 python data_gen/tts/base_binarizer.py
 ```
 
