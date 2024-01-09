@@ -111,8 +111,8 @@ Any organization or individual is prohibited from using any technology mentioned
 
 
 ## Tips
-1. If you find the ``mfa_dict.txt`` and ``mfa_model.zip`` are missing, you need to run the preprocess script in our repo to get them. You can also download all of these files you need for inferencing the pre-trained model from
-``https://drive.google.com/drive/folders/1H-dk7cNYVn1DSzYq_q66rS5b5xpbdBi4?usp=sharing`` and put them in ``data/processed/libritts``. 
+1. If you find the ``mfa_dict.txt``, ``mfa_model.zip``, ``phone_set.json``, or ``word_set.json`` are missing in inference, you need to run the preprocess script in our repo to get them. You can also download all of these files you need for inferencing the pre-trained model from
+``https://drive.google.com/drive/folders/1BOFQ0j2j6nsPqfUlG8ot9I-xvNGmwgPK?usp=sharing`` and put them in ``data/processed/libritts``. 
 2. Please specify the MFA version as 2.0.0rc3.
 
 If you find any other problems, please contact me.
